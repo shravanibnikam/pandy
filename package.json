@@ -2,7 +2,7 @@
   "name": "sprout-panda",
   "version": "0.1.0",
   "private": true,
-  "description": "Pandy — a cute wellness companion that reminds you to stand, hydrate, look away and touch grass. VS Code extension + Electron tray app.",
+  "description": "Pandy \u2014 a cute wellness companion that reminds you to stand, hydrate, look away and touch grass. VS Code extension + Electron tray app.",
   "license": "MIT",
   "author": "Shravani Nikam",
   "repository": {
@@ -14,16 +14,16 @@
   },
   "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "dev:vscode": "pnpm --filter @pandy/vscode-extension dev",
-    "dev:electron": "pnpm --filter @pandy/electron-app dev",
+    "dev:vscode": "pnpm --filter ./apps/vscode-extension dev",
+    "dev:electron": "pnpm --filter ./apps/electron-app dev",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -b --pretty",
-    "package:vscode": "pnpm --filter @pandy/vscode-extension package",
-    "package:electron": "pnpm --filter @pandy/electron-app package",
+    "package:vscode": "pnpm --filter ./apps/vscode-extension package",
+    "package:electron": "pnpm --filter ./apps/electron-app package",
     "clean": "rm -rf packages/*/dist apps/*/dist apps/*/out **/*.tsbuildinfo"
   },
   "devDependencies": {

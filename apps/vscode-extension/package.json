@@ -1,0 +1,288 @@
+{
+  "name": "pandy",
+  "displayName": "Pandy — Wellness Companion",
+  "description": "A cute panda who reminds you to stand, hydrate, look away and touch grass. Fully offline, no accounts, no telemetry.",
+  "version": "0.1.0",
+  "publisher": "shravanibnikam",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["wellness", "health", "break", "reminder", "pomodoro", "ergonomics"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shravanibnikam/pandy.git",
+    "directory": "apps/vscode-extension"
+  },
+  "bugs": {
+    "url": "https://github.com/shravanibnikam/pandy/issues"
+  },
+  "homepage": "https://github.com/shravanibnikam/pandy#readme",
+  "galleryBanner": {
+    "color": "#1e1f1c",
+    "theme": "dark"
+  },
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pandy.takeBreakNow",
+        "title": "Take Break Now",
+        "category": "Sprout Panda"
+      },
+      { "command": "pandy.pause", "title": "Pause", "category": "Sprout Panda" },
+      { "command": "pandy.resume", "title": "Resume", "category": "Sprout Panda" },
+      { "command": "pandy.openSettings", "title": "Open Settings", "category": "Sprout Panda" },
+      { "command": "pandy.resetSchedule", "title": "Reset Schedule", "category": "Sprout Panda" }
+    ],
+    "configuration": {
+      "title": "Pandy",
+      "properties": {
+        "pandy.water.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remind you to drink water.",
+          "order": 1
+        },
+        "pandy.water.intervalMinutes": {
+          "type": "number",
+          "default": 120,
+          "minimum": 1,
+          "maximum": 1440,
+          "description": "Minutes between water reminders.",
+          "order": 2
+        },
+        "pandy.stand.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remind you to stand and stretch.",
+          "order": 3
+        },
+        "pandy.stand.intervalMinutes": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "maximum": 1440,
+          "description": "Minutes between stand-and-stretch reminders.",
+          "order": 4
+        },
+        "pandy.lookAway.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remind you to look away from the screen.",
+          "order": 5
+        },
+        "pandy.lookAway.intervalMinutes": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 1440,
+          "description": "Minutes between look-away reminders.",
+          "order": 6
+        },
+        "pandy.touchGrass.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Remind you to take a short break outside.",
+          "order": 7
+        },
+        "pandy.touchGrass.intervalMinutes": {
+          "type": "number",
+          "default": 240,
+          "minimum": 1,
+          "maximum": 1440,
+          "description": "Minutes between outside-break reminders.",
+          "order": 8
+        },
+        "pandy.workingDays": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 6 },
+          "default": [1, 2, 3, 4, 5],
+          "markdownDescription": "Days reminders are active. `0` is Sunday through `6` is Saturday.",
+          "order": 10
+        },
+        "pandy.activeHours.start": {
+          "type": "string",
+          "pattern": "^([01]?\\d|2[0-3]):[0-5]\\d$",
+          "default": "08:00",
+          "description": "Start of the active window, as HH:MM.",
+          "order": 11
+        },
+        "pandy.activeHours.end": {
+          "type": "string",
+          "pattern": "^([01]?\\d|2[0-3]):[0-5]\\d$",
+          "default": "20:00",
+          "description": "End of the active window, as HH:MM.",
+          "order": 12
+        },
+        "pandy.quietHours.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress reminders during quiet hours.",
+          "order": 13
+        },
+        "pandy.quietHours.start": {
+          "type": "string",
+          "pattern": "^([01]?\\d|2[0-3]):[0-5]\\d$",
+          "default": "20:00",
+          "description": "Start of quiet hours, as HH:MM. May cross midnight.",
+          "order": 14
+        },
+        "pandy.quietHours.end": {
+          "type": "string",
+          "pattern": "^([01]?\\d|2[0-3]):[0-5]\\d$",
+          "default": "08:00",
+          "description": "End of quiet hours, as HH:MM.",
+          "order": 15
+        },
+        "pandy.snoozeMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 240,
+          "description": "How long Snooze defers a reminder.",
+          "order": 20
+        },
+        "pandy.dailyLimit": {
+          "type": ["number", "null"],
+          "default": null,
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Maximum reminders per day. Leave empty for no limit.",
+          "order": 21
+        },
+        "pandy.randomizationMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "maximum": 60,
+          "description": "Random variation applied to each interval, in minutes.",
+          "order": 22
+        },
+        "pandy.focusModeMinutes": {
+          "type": "number",
+          "default": 50,
+          "minimum": 5,
+          "maximum": 480,
+          "description": "How long focus mode and the Pause button hold reminders off.",
+          "order": 23
+        },
+        "pandy.cooldownMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 0,
+          "maximum": 120,
+          "description": "Minimum gap between any two reminders, so several never stack.",
+          "order": 24
+        },
+        "pandy.tone": {
+          "type": "string",
+          "enum": ["low-key", "gen-z", "chaotic"],
+          "enumDescriptions": [
+            "Plain language. No slang, no emoji.",
+            "Slang and emoji, warm rather than ironic.",
+            "Unhinged energy, still kind."
+          ],
+          "default": "gen-z",
+          "description": "Voice Pandy uses.",
+          "order": 30
+        },
+        "pandy.customMessages.water": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Your own water reminders. Used in every tone.",
+          "order": 31
+        },
+        "pandy.customMessages.stand": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Your own stand-and-stretch reminders.",
+          "order": 32
+        },
+        "pandy.customMessages.lookAway": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Your own look-away reminders.",
+          "order": 33
+        },
+        "pandy.customMessages.touchGrass": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Your own outside-break reminders.",
+          "order": 34
+        },
+        "pandy.animation.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Animate the mascot.",
+          "order": 40
+        },
+        "pandy.animation.reducedMotion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a single still frame instead of animating.",
+          "order": 41
+        },
+        "pandy.animation.mascotScale": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Whole-number scale for the 64px mascot. Fractional scales would blur the pixel art.",
+          "order": 42
+        },
+        "pandy.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Pandy and the next-reminder countdown in the status bar.",
+          "order": 50
+        },
+        "pandy.deliveryOwner": {
+          "type": "string",
+          "enum": ["vscode", "desktop", "both"],
+          "enumDescriptions": [
+            "Only VS Code shows notifications.",
+            "The desktop app shows notifications when it is running.",
+            "Whichever is available — never both at once."
+          ],
+          "default": "both",
+          "markdownDescription": "Where reminders appear when the Pandy desktop app is also installed. Pandy never shows the same reminder twice.",
+          "order": 51
+        },
+        "pandy.theme": {
+          "type": "string",
+          "enum": ["light", "dark", "system"],
+          "default": "system",
+          "description": "Theme for the Pandy settings panel.",
+          "order": 52
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs --production",
+    "dev": "node esbuild.mjs --watch",
+    "package": "pnpm build && vsce package --no-dependencies --out ../../release/pandy-vscode.vsix",
+    "publish": "pnpm build && vsce publish --no-dependencies",
+    "clean": "rm -rf dist media/strips media/webview.js"
+  },
+  "dependencies": {
+    "@pandy/core": "workspace:*",
+    "@pandy/mascot": "workspace:*",
+    "@pandy/messages": "workspace:*",
+    "@pandy/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.1"
+  }
+}

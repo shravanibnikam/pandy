@@ -12,6 +12,9 @@
     },
     {
       "path": "./packages/mascot"
+    },
+    {
+      "path": "./apps/vscode-extension"
     }
   ]
 }

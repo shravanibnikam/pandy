@@ -2,7 +2,12 @@ packages:
   - "packages/*"
   - "apps/*"
 
-# Both need their postinstall to fetch a platform-specific binary.
 allowBuilds:
+  # Fetch a platform-specific binary in postinstall.
   esbuild: true
   electron: true
+  # vsce's signing helper, needed to produce a .vsix.
+  "@vscode/vsce-sign": true
+  # Pulled in by vsce for credential storage during publish. Not needed to
+  # build or package, and it compiles native code, so leave it unbuilt.
+  keytar: false

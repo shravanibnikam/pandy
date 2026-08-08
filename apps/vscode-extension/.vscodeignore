@@ -1,0 +1,15 @@
+# Sources and build tooling — only the bundle ships.
+src/**
+esbuild.mjs
+tsconfig.json
+tsconfig.tsbuildinfo
+dist/types/**
+dist/**/*.tsbuildinfo
+**/*.ts
+**/*.map
+
+# Dev-only
+.vscode/**
+node_modules/**
+.gitignore
+.eslintrc*

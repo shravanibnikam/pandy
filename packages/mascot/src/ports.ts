@@ -12,8 +12,15 @@ export interface SpriteImage {
 export interface DrawTarget {
   imageSmoothingEnabled: boolean;
   clearRect(x: number, y: number, w: number, h: number): void;
+  /**
+   * The parameter is widened to include CanvasImageSource so a real
+   * CanvasRenderingContext2D is assignable to DrawTarget. Method parameters are
+   * checked bivariantly, and CanvasImageSource is assignable to this union even
+   * though the structural SpriteImage alone is not — SVGImageElement has no
+   * numeric width. Without the union, passing a real canvas context fails.
+   */
   drawImage(
-    image: SpriteImage,
+    image: SpriteImage | CanvasImageSource,
     sx: number,
     sy: number,
     sw: number,
