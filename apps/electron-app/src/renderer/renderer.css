@@ -1,0 +1,233 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1c1d1a;
+  --muted: #5d6159;
+  --accent: #78b971;
+  --accent-fg: #10240d;
+  --border: #d7dad3;
+  --card: #f5f7f3;
+  --radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1f1c;
+    --fg: #eef0ea;
+    --muted: #a8ada2;
+    --accent: #a7e89f;
+    --accent-fg: #10240d;
+    --border: #34372f;
+    --card: #26282300;
+  }
+}
+
+/* Explicit overrides win over the OS preference when the user picks a theme. */
+body[data-theme="light"] { color-scheme: light; }
+body[data-theme="dark"]  { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg);
+}
+
+/* The widget route must be fully transparent — the window is too. */
+body[data-route="widget"] {
+  background: transparent;
+  overflow: hidden;
+}
+
+body[data-route="settings"],
+body[data-route="onboarding"] {
+  background: var(--bg);
+  overflow: auto;
+}
+
+body[data-route="settings"] #widget,
+body[data-route="onboarding"] #widget { display: none; }
+
+/* ── widget ─────────────────────────────────────────────────────────────── */
+
+.widget {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  /* The whole widget is the drag handle. Buttons opt out below. */
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.locked .widget { -webkit-app-region: no-drag; }
+
+canvas {
+  image-rendering: pixelated;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  max-width: 260px;
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  -webkit-app-region: no-drag;
+}
+
+.actions {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  display: flex;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.actions button {
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.actions button:first-child {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── panel ──────────────────────────────────────────────────────────────── */
+
+.panel {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+p  { margin: 0 0 10px; line-height: 1.5; }
+
+.muted { color: var(--muted); font-size: 13px; }
+.hint  { color: var(--muted); font-size: 12px; }
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+legend { padding: 0 6px; font-weight: 600; font-size: 14px; }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 6px 14px;
+  align-items: center;
+  padding: 6px 0;
+}
+.row .hint { grid-column: 1 / -1; margin-top: -4px; }
+.row-check { grid-template-columns: auto 1fr; }
+.row-check label { order: 2; }
+.row-check input { order: 1; justify-self: start; }
+
+label { cursor: pointer; font-size: 14px; }
+
+input[type="number"], input[type="time"], input[type="range"], select {
+  width: 100%;
+  padding: 5px 7px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+}
+
+input[type="checkbox"], input[type="radio"] {
+  width: 16px; height: 16px; margin: 0;
+  accent-color: var(--accent);
+}
+
+button {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: 600;
+  padding: 8px 18px;
+}
+
+/* Keyboard users need to see where focus is, on every route. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Selected days carry a check mark too — never colour alone. */
+.chip.on {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.panel canvas { width: 96px; height: 96px; }
+
+.radio-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  padding: 5px 0;
+}
+.radio-row .hint { grid-column: 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

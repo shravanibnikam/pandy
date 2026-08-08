@@ -1,0 +1,53 @@
+appId: com.shravanibnikam.pandy
+productName: Pandy
+copyright: Copyright © 2026 Shravani Nikam
+
+directories:
+  output: ../../release/electron
+  buildResources: build
+
+# Only the bundle and its assets. Sources and node_modules stay out — everything
+# is already bundled by esbuild, so there is nothing to resolve at runtime.
+files:
+  - "dist/**/*"
+  - "package.json"
+  - "!**/*.map"
+
+extraMetadata:
+  main: dist/main/index.cjs
+
+mac:
+  category: public.app-category.healthcare-fitness
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  icon: build/icon.png
+  # Tray-only app: no dock icon, and it must survive the window being closed.
+  extendInfo:
+    LSUIElement: true
+  # Unsigned local builds. Set CSC_LINK / CSC_KEY_PASSWORD to sign properly.
+  identity: null
+
+dmg:
+  title: Pandy ${version}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Pandy
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  icon: build/icon.png
+  category: Utility
+  synopsis: A cute wellness companion that reminds you to take breaks

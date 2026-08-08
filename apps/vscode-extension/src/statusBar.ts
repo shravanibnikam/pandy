@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import type { NextUp, ReminderEngine } from "@pandy/core";
+import { formatLong, formatShort, msUntilLabelChanges } from "./format.js";
 
 /**
  * A deliberately quiet status bar entry: the panda, and how long until the next
@@ -115,37 +116,3 @@ const LABELS: Record<string, string> = {
   lookAway: "look away",
   touchGrass: "outside break",
 };
-
-/** "45m", "2h", "<1m" — compact enough for a status bar. */
-export function formatShort(ms: number): string {
-  const minutes = Math.round(ms / 60_000);
-  if (minutes < 1) return "<1m";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
-}
-
-export function formatLong(ms: number): string {
-  const minutes = Math.round(ms / 60_000);
-  if (minutes < 1) return "less than a minute";
-  if (minutes === 1) return "1 minute";
-  if (minutes < 60) return `${minutes} minutes`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  const h = hours === 1 ? "1 hour" : `${hours} hours`;
-  return rest === 0 ? h : `${h} ${rest} min`;
-}
-
-/**
- * Milliseconds until `formatShort` would render something different. Below an
- * hour the label changes every minute; above it, only when the hour rolls over.
- */
-export function msUntilLabelChanges(remaining: number): number {
-  if (remaining <= 0) return 1_000;
-  const minutes = remaining / 60_000;
-  // Rounding means the label flips at the half-minute, not on the minute.
-  const nextBoundary = minutes < 60 ? Math.floor(minutes - 0.5) + 0.5 : Math.floor(minutes) - 0.5;
-  const ms = (minutes - Math.max(nextBoundary, 0)) * 60_000;
-  return ms > 0 ? ms : 30_000;
-}
