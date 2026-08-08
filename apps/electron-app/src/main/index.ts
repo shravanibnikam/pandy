@@ -12,6 +12,7 @@ import { CHANNELS, type AppState } from "../shared/ipc.js";
 import { dataDir, fileStorage, loadSettings, saveSettings } from "./store.js";
 import { startHeartbeat, stopHeartbeat } from "./presence.js";
 import { WidgetWindow } from "./widgetWindow.js";
+import { SettingsWindow } from "./settingsWindow.js";
 import { PandyTray } from "./tray.js";
 import {
   booleanFieldOf,
@@ -30,6 +31,7 @@ if (!app.requestSingleInstanceLock()) {
 let settings: Settings;
 let engine: ReminderEngine;
 let widget: WidgetWindow;
+let settingsWin: SettingsWindow;
 let tray: PandyTray;
 let quitting = false;
 
@@ -37,6 +39,7 @@ async function main(): Promise<void> {
   settings = await loadSettings();
 
   widget = new WidgetWindow(settings);
+  settingsWin = new SettingsWindow();
   engine = new ReminderEngine({
     clock: systemClock,
     storage: fileStorage(),
@@ -62,7 +65,7 @@ async function main(): Promise<void> {
         afterChange();
       }),
     toggleWidget: () => toggleWidget(),
-    openSettings: () => widget.setRoute("settings"),
+    openSettings: () => openSettings("settings"),
     resetSchedule: () => void engine.resetSchedule().then(afterChange),
     quit: () => {
       quitting = true;
@@ -88,13 +91,66 @@ async function main(): Promise<void> {
   // template's File/Edit entries appearing for a tray-only app.
   if (process.platform !== "darwin") Menu.setApplicationMenu(null);
 
-  if (!engine.getState().onboarded) widget.setRoute("onboarding");
+  if (!engine.getState().onboarded) openSettings("onboarding");
 
   if (process.argv.includes("--pandy-selftest")) runSelfTest();
   if (process.argv.includes("--pandy-capture")) void runCapture();
+  if (process.argv.includes("--pandy-probe")) void runTransparencyProbe();
 }
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Does the widget → settings → widget round trip and reports the window's real
+ * state at each step.
+ *
+ * The widget is transparent until settings is opened once, then turns opaque
+ * and stays that way. Something in the route switch is destroying transparency
+ * permanently; this pins down whether it is the page or the native window.
+ */
+async function runTransparencyProbe(): Promise<void> {
+  const out = process.env["PANDY_PROBE_OUT"] ?? join(dataDir(), "probe.json");
+  const w = widget.window;
+  if (!w) {
+    app.exit(1);
+    return;
+  }
+  const watchdog = setTimeout(() => app.exit(2), 60_000);
+  watchdog.unref?.();
+
+  const sample = async (label: string) => ({
+    label,
+    nativeBackgroundColor: w.getBackgroundColor(),
+    size: w.getSize(),
+    settingsWindowOpen: settingsWin.isOpen,
+    page: await w.webContents.executeJavaScript(
+      `({
+         route: document.body.dataset.route,
+         html: getComputedStyle(document.documentElement).backgroundColor,
+         body: getComputedStyle(document.body).backgroundColor,
+         widget: getComputedStyle(document.getElementById('widget')).backgroundColor,
+       })`,
+    ),
+  });
+
+  await wait(1500);
+  widget.showInactive();
+  await wait(700);
+  const before = await sample("1. widget, before settings");
+
+  openSettings("settings");
+  await wait(1600);
+  const during = await sample("2. settings window open");
+
+  settingsWin.close();
+  await wait(1200);
+  const after = await sample("3. widget, after closing settings");
+
+  writeFileSync(out, JSON.stringify({ before, during, after }, null, 2), "utf8");
+  clearTimeout(watchdog);
+  quitting = true;
+  app.exit(0);
+}
 
 /**
  * Walks the app through each state and captures its own window to PNG.
@@ -111,56 +167,58 @@ async function runCapture(): Promise<void> {
     app.exit(1);
     return;
   }
-
-  // Never leave a hung capture running forever.
-  const watchdog = setTimeout(() => app.exit(2), 90_000);
+  const watchdog = setTimeout(() => app.exit(2), 120_000);
   watchdog.unref?.();
 
-  // Capture drives the real firing path, but an OS notification would sit there
-  // waiting for a human. Route delivery to VS Code for the duration so the
-  // widget bubble still appears without raising a system notification.
+  // A real OS notification would sit there waiting for a human.
   settings = { ...settings, deliveryOwner: "vscode" };
 
-  const shot = async (name: string): Promise<void> => {
-    const image = await w.webContents.capturePage();
+  const shot = async (win: Electron.BrowserWindow, name: string): Promise<void> => {
+    const image = await win.webContents.capturePage();
     writeFileSync(join(dir, name), image.toPNG());
   };
 
-  // Sprite strips are fetched and decoded on load; give them a beat.
   await wait(1800);
-
-  widget.setRoute("widget");
   widget.showInactive();
   await wait(1200);
-  await shot("01-widget-idle.png");
+  await shot(w, "01-widget-idle.png");
 
-  // The real firing path, not a mock: this picks a message, persists, animates
-  // and grows the window exactly as a scheduled reminder would.
   await engine.triggerNow("water");
   await wait(1400);
-  await shot("02-widget-reminder.png");
+  await shot(w, "02-widget-reminder.png");
 
   clearReminder();
   await engine.resolve("water", "completed");
-  await wait(500);
-  await shot("03-widget-celebrate.png");
+  await wait(600);
+  await shot(w, "03-widget-celebrate.png");
 
-  widget.setRoute("onboarding");
-  await wait(1000);
-  await shot("04-onboarding.png");
+  // Onboarding, in its own window.
+  openSettings("onboarding");
+  await wait(1800);
+  const onboard = settingsWin.window;
+  if (onboard) await shot(onboard, "04-onboarding.png");
+  settingsWin.close();
+  await wait(600);
 
-  // Walk every settings section so each one can be inspected.
-  widget.setRoute("settings");
-  await wait(1200);
-  const sections = ["reminders", "pandy", "sounds", "focus", "notifications", "advanced"];
-  for (let i = 0; i < sections.length; i++) {
-    // Drive the sidebar the way a user would, by clicking it.
-    await w.webContents.executeJavaScript(
-      `(() => { const b = [...document.querySelectorAll('.nav button')][${i}]; if (b) b.click(); })()`,
-    );
-    await wait(700);
-    await shot(`0${5 + i}-settings-${sections[i]}.png`);
+  // Every settings section.
+  openSettings("settings");
+  await wait(1800);
+  const panel = settingsWin.window;
+  if (panel) {
+    const sections = ["reminders", "pandy", "sounds", "focus", "notifications", "advanced"];
+    for (let i = 0; i < sections.length; i++) {
+      await panel.webContents.executeJavaScript(
+        `(() => { const b = [...document.querySelectorAll('.nav button')][${i}]; if (b) b.click(); })()`,
+      );
+      await wait(700);
+      await shot(panel, `0${5 + i}-settings-${sections[i]}.png`);
+    }
   }
+
+  // Prove the widget is still transparent after all that.
+  settingsWin.close();
+  await wait(1000);
+  await shot(w, "11-widget-after-settings.png");
 
   clearTimeout(watchdog);
   quitting = true;
@@ -203,7 +261,7 @@ function runSelfTest(): void {
       resizable: w?.isResizable() ?? null,
       size: w?.getSize() ?? null,
       position: w?.getPosition() ?? null,
-      route: widget.route,
+      settingsWindowOpen: settingsWin.isOpen,
       onboarded: engine.getState().onboarded,
       next: engine.peekNext(),
       paused: engine.isPaused(),
@@ -273,7 +331,9 @@ function currentState(): AppState {
 }
 
 function broadcastState(): void {
-  widget.window?.webContents.send(CHANNELS.onState, currentState());
+  const state = currentState();
+  widget.window?.webContents.send(CHANNELS.onState, state);
+  settingsWin?.window?.webContents.send(CHANNELS.onState, state);
 }
 
 function broadcastReminder(reminder: DueReminder): void {
@@ -292,6 +352,18 @@ function sendMascot(state: MascotState): void {
  * Whichever it was, the widget bubble has to come down — otherwise clicking
  * "Done" on a notification leaves a stale prompt floating on screen.
  */
+function openSettings(route: "settings" | "onboarding"): void {
+  settingsWin.open(route, () => {
+    // Closing the window is the same as pressing Close.
+    broadcastState();
+  });
+  // Push current state as soon as the renderer is listening.
+  const w = settingsWin.window;
+  w?.webContents.once("did-finish-load", () => {
+    w.webContents.send(CHANNELS.onState, currentState());
+  });
+}
+
 function sendSound(event: "reminder" | "completed" | "snoozed" | "focusStart" | "focusEnd"): void {
   widget.window?.webContents.send(CHANNELS.onSound, event);
 }
@@ -318,7 +390,6 @@ function toggleWidget(): void {
   if (widget.visible) {
     widget.hide();
   } else {
-    widget.setRoute("widget");
     widget.showInactive();
   }
   void applySettings({ ...settings, widget: { ...settings.widget, visible: widget.visible } });
@@ -397,7 +468,7 @@ function registerIpc(): void {
 
   ipcMain.handle(CHANNELS.completeOnboarding, async () => {
     await engine.setOnboarded(true);
-    widget.setRoute("widget");
+    settingsWin.close();
     widget.showInactive();
     afterChange();
   });
@@ -421,13 +492,9 @@ function registerIpc(): void {
     await applySettings({ ...settings, widget: { ...settings.widget, visible } });
   });
 
-  ipcMain.handle(CHANNELS.openSettings, () => widget.setRoute("settings"));
+  ipcMain.handle(CHANNELS.openSettings, () => openSettings("settings"));
 
-  ipcMain.handle(CHANNELS.closeSettings, () => {
-    widget.setRoute("widget");
-    if (settings.widget.visible) widget.showInactive();
-    else widget.hide();
-  });
+  ipcMain.handle(CHANNELS.closeSettings, () => settingsWin.close());
 
   ipcMain.handle(CHANNELS.contextMenu, () => {
     const host = widget.window;
@@ -443,7 +510,7 @@ function registerIpc(): void {
       },
       { label: "Resume", enabled: engine.isPaused(), click: () => void engine.resumeFromPause().then(afterChange) },
       { type: "separator" },
-      { label: "Settings…", click: () => widget.setRoute("settings") },
+      { label: "Settings…", click: () => openSettings("settings") },
       { label: "Hide widget", click: () => toggleWidget() },
       { type: "separator" },
       {
@@ -476,7 +543,6 @@ function registerPowerHooks(): void {
 
 app.on("second-instance", () => {
   // Someone launched Pandy again; surface what is already running.
-  widget.setRoute("widget");
   widget.showInactive();
 });
 
@@ -495,6 +561,7 @@ app.on("will-quit", (event) => {
   event.preventDefault();
   void stopHeartbeat().finally(() => {
     tray?.destroy();
+    settingsWin?.destroy();
     widget?.destroy();
     process.exit(0);
   });

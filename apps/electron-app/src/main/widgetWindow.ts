@@ -1,15 +1,11 @@
 import { BrowserWindow, screen } from "electron";
 import { join } from "node:path";
 import type { Settings, WidgetPosition } from "@pandy/shared-types";
-import type { Route } from "../shared/ipc.js";
-import { CHANNELS } from "../shared/ipc.js";
 
 const WIDGET_BASE = 64;
 const MARGIN = 24;
 /** Narrow lane to the right of the mascot for the heart / dot control. */
 const CONTROL_LANE = 30;
-/** Settings and onboarding need room; the widget itself does not. */
-const PANEL_SIZE = { width: 860, height: 760 };
 /**
  * Extra room for the message bubble above the mascot and the Done/Snooze/Pause
  * row below it. A frameless window clips anything outside its bounds, so
@@ -23,15 +19,15 @@ export interface Size {
 }
 
 /**
- * Exactly one BrowserWindow for the whole app.
+ * The transparent desktop widget. Created once, never mutated.
  *
- * The widget and the settings panel are routes inside it rather than separate
- * windows: a second window would double the renderer cost for a mascot that is
- * 64 pixels square, and the spec asks for one window and no extra processes.
+ * Nothing in this class may call setResizable, setFocusable or setStyleMask on
+ * macOS: those rewrite the NSWindow style mask, and doing that to a transparent
+ * frameless window permanently destroys its transparency. Settings therefore
+ * lives in its own window (settingsWindow.ts) rather than as a route in here.
  */
 export class WidgetWindow {
   #window: BrowserWindow | null = null;
-  #route: Route = "widget";
   #settings: Settings;
   #reminderMode = false;
 
@@ -41,10 +37,6 @@ export class WidgetWindow {
 
   get window(): BrowserWindow | null {
     return this.#window && !this.#window.isDestroyed() ? this.#window : null;
-  }
-
-  get route(): Route {
-    return this.#route;
   }
 
   create(position: WidgetPosition | null, onMoved: (x: number, y: number) => void): BrowserWindow {
@@ -101,7 +93,7 @@ export class WidgetWindow {
     // Persist wherever the user drags it to.
     this.#window.on("moved", () => {
       const w = this.window;
-      if (!w || this.#route !== "widget") return;
+      if (!w) return;
       const [x = 0, y = 0] = w.getPosition();
       onMoved(x, y);
     });
@@ -137,7 +129,7 @@ export class WidgetWindow {
    */
   setReminderMode(on: boolean): void {
     const w = this.window;
-    if (!w || this.#route !== "widget" || this.#reminderMode === on) return;
+    if (!w || this.#reminderMode === on) return;
     this.#reminderMode = on;
     this.#resizeTo(on ? this.#reminderSize() : this.idleSize());
   }
@@ -180,51 +172,27 @@ export class WidgetWindow {
   }
 
   /**
-   * Swap between the widget and the full panel in the same window: resize,
-   * make it focusable and framed enough to be usable, then swap back.
+   * Put the widget back in its corner.
+   *
+   * There is deliberately no route switching left in this class. Settings now
+   * lives in its own window, because turning this one into a panel meant
+   * calling setResizable/setFocusable, and on macOS those rewrite the NSWindow
+   * style mask — which permanently destroys a transparent frameless window's
+   * transparency. This window is created once and never mutated.
    */
-  setRoute(route: Route): void {
+  resetPosition(): void {
     const w = this.window;
     if (!w) return;
-    const previous = this.#route;
-    this.#route = route;
-
-    if (route === "widget") {
-      const size = this.#reminderMode ? this.#reminderSize() : this.idleSize();
-      w.setFocusable(false);
-      w.setAlwaysOnTop(this.#settings.widget.alwaysOnTop, "floating");
-      w.setResizable(false);
-      // The panel sets a minimum size; it persists, and would stop the widget
-      // ever shrinking back down once settings had been opened even once.
-      w.setMinimumSize(1, 1);
-      w.setSize(size.width, size.height);
-      w.setSkipTaskbar(true);
-      // Coming back from the panel, re-seat it in its corner rather than
-      // leaving the widget stranded in the middle of the screen.
-      if (previous !== "widget") {
-        const at = cornerPosition(this.#settings, size);
-        w.setPosition(at.x, at.y);
-      }
-    } else {
-      // The panel needs the keyboard, so it must be focusable while open.
-      w.setFocusable(true);
-      w.setAlwaysOnTop(false);
-      w.setResizable(true);
-      w.setMinimumSize(520, 480);
-      w.setSize(PANEL_SIZE.width, PANEL_SIZE.height);
-      w.setSkipTaskbar(false);
-      w.center();
-      w.show();
-      w.focus();
-    }
-    w.webContents.send(CHANNELS.onRoute, route);
+    const size = this.#reminderMode ? this.#reminderSize() : this.idleSize();
+    const at = cornerPosition(this.#settings, size);
+    w.setPosition(at.x, at.y);
   }
 
   updateSettings(settings: Settings): void {
     const previous = this.#settings;
     this.#settings = settings;
     const w = this.window;
-    if (!w || this.#route !== "widget") return;
+    if (!w) return;
 
     this.applyAlwaysOnTop(settings.widget.alwaysOnTop);
     this.applyAllWorkspaces(settings.widget.visibleOnAllWorkspaces);
@@ -253,15 +221,6 @@ export class WidgetWindow {
     const [width = 0, height = 0] = w.getSize();
     const clamped = clampRectToDisplay(x, y, width, height);
     w.setPosition(clamped.x, clamped.y);
-  }
-
-  /** Put the widget back in its configured corner. */
-  snapToCorner(): void {
-    const w = this.window;
-    if (!w || this.#route !== "widget") return;
-    const size = this.#reminderMode ? this.#reminderSize() : this.idleSize();
-    const at = cornerPosition(this.#settings, size);
-    w.setPosition(at.x, at.y);
   }
 
   destroy(): void {

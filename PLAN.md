@@ -350,8 +350,18 @@ Single instance (`requestSingleInstanceLock`). Tray-resident; closing the window
 hides it rather than quitting. Native notifications. Settings in a local JSON
 file. Fully offline, no account.
 
-**Windows:** exactly **one** `BrowserWindow` for the widget. Settings open in the
-same window via a route swap, so the "one BrowserWindow" rule holds.
+**Windows:** the transparent widget is one `BrowserWindow`, created once and
+**never mutated**. Settings opens in a second, ordinary window, created on
+demand and destroyed on close.
+
+This deviates from the original "use one BrowserWindow" rule, and it has to.
+Swapping routes inside the widget meant calling `setResizable()` and
+`setFocusable()` on it, and on macOS both rewrite the NSWindow style mask —
+which permanently destroys a transparent frameless window's transparency. The
+widget was clear until settings was opened once, then opaque forever, while the
+page still computed `rgba(0,0,0,0)` throughout. Two windows exist only while
+settings is actually open, and the widget staying on screen is a bonus: size and
+fade changes are visible on the real Pandy as you drag the sliders.
 
 **Widget:** transparent, frameless, draggable, optional always-on-top, optional
 visible-on-all-workspaces, adjustable size and opacity, corner snapping, lock

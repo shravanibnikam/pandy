@@ -176,6 +176,7 @@ window.addEventListener("mouseup", () => {
 
 function setRoute(route: Route): void {
   body.dataset["route"] = route;
+  document.title = route === "onboarding" ? "Welcome to Pandy" : "Pandy Settings";
   const isPanel = route !== "widget";
   panel.hidden = !isPanel;
   widgetEl.hidden = isPanel;
@@ -237,7 +238,18 @@ api.onSound((event: string) => {
 });
 api.onRoute(setRoute);
 
+/*
+ * Which face this window shows is fixed at load time by the query string, not
+ * by a later message: the widget window and the settings window are separate
+ * BrowserWindows now, and each only ever shows one thing.
+ */
+const INITIAL_ROUTE = ((): Route => {
+  const q = new URLSearchParams(location.search).get("route");
+  return q === "settings" || q === "onboarding" ? q : "widget";
+})();
+
 void (async () => {
+  if (INITIAL_ROUTE !== "widget") setRoute(INITIAL_ROUTE);
   const initial = await api.getState();
   sound = new SoundPlayer("sounds", initial.settings.sound);
   applyState(initial);
