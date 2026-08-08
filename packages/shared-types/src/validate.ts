@@ -4,6 +4,7 @@ import {
   type CategorySettings,
   type Corner,
   type MinuteOfDay,
+  type SettingsControl,
   type Settings,
   type Theme,
   type Tone,
@@ -57,6 +58,7 @@ const TONES: readonly Tone[] = ["low-key", "gen-z", "chaotic"];
 const THEMES: readonly Theme[] = ["light", "dark", "system"];
 const OWNERS: readonly DeliveryOwner[] = ["vscode", "desktop", "both"];
 const CORNERS: readonly Corner[] = ["top-left", "top-right", "bottom-left", "bottom-right"];
+const CONTROLS: readonly SettingsControl[] = ["heart", "dot", "hidden"];
 const PRESETS = ["recommended", "custom"] as const;
 
 const MINUTES_IN_DAY = 24 * 60;
@@ -161,6 +163,7 @@ export function parseSettings(input: unknown): Settings {
     sound: {
       enabled: bool(sound["enabled"], d.sound.enabled),
       volume: num(sound["volume"], d.sound.volume, 0, 1),
+      focusCues: bool(sound["focusCues"], d.sound.focusCues),
     },
     animation: {
       enabled: bool(anim["enabled"], d.animation.enabled),
@@ -179,6 +182,7 @@ export function parseSettings(input: unknown): Settings {
         d.widget.visibleOnAllWorkspaces,
       ),
       locked: bool(widget["locked"], d.widget.locked),
+      settingsControl: oneOf(widget["settingsControl"], CONTROLS, d.widget.settingsControl),
     },
 
     launchAtLogin: bool(r["launchAtLogin"], d.launchAtLogin),

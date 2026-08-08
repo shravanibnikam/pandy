@@ -37,7 +37,7 @@ just a panda who thinks you should drink some water.
 </tr>
 </table>
 
-<img src="docs/screenshots/05-settings.png" width="640">
+<img src="docs/screenshots/03-settings-reminders.png" width="700">
 
 These are captured by the app itself via `--pandy-capture`, which walks the real
 firing path and screenshots its own window — so they cannot drift from what
@@ -124,6 +124,7 @@ Builds are unsigned by default — see [PUBLISHING.md](./docs/PUBLISHING.md).
 | [Publishing](./docs/PUBLISHING.md) | Marketplace and installer releases, signing |
 | [Privacy](./docs/PRIVACY.md) | Exactly what is stored, and where |
 | [Accessibility](./docs/ACCESSIBILITY.md) | Motion, keyboard, screen readers, language |
+| [Sounds](./docs/SOUNDS.md) | Every cue, when it plays, and why it never loops |
 | [Plan](./PLAN.md) | Build plan, verified sprite facts, decisions taken |
 
 ## Privacy
@@ -135,7 +136,7 @@ telemetry — not disabled by default, **absent**.
 
 ## Status
 
-Both products build, package and run. 164 tests, clean typecheck and lint.
+Both products build, package and run. 192 tests, clean typecheck and lint.
 
 The scheduling engine is covered by 67 tests against an injected fake clock —
 quiet hours crossing midnight, DST transitions, sleep and resume, restart with

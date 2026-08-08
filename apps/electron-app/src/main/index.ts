@@ -51,8 +51,16 @@ async function main(): Promise<void> {
 
   tray = new PandyTray({
     takeBreakNow: () => void engine.triggerNow(),
-    pause: (minutes) => void engine.pause(minutes * 60_000).then(afterChange),
-    resume: () => void engine.resumeFromPause().then(afterChange),
+    pause: (minutes) =>
+      void engine.pause(minutes * 60_000).then(() => {
+        sendSound("focusStart");
+        afterChange();
+      }),
+    resume: () =>
+      void engine.resumeFromPause().then(() => {
+        sendSound("focusEnd");
+        afterChange();
+      }),
     toggleWidget: () => toggleWidget(),
     openSettings: () => widget.setRoute("settings"),
     resetSchedule: () => void engine.resetSchedule().then(afterChange),
@@ -104,6 +112,15 @@ async function runCapture(): Promise<void> {
     return;
   }
 
+  // Never leave a hung capture running forever.
+  const watchdog = setTimeout(() => app.exit(2), 90_000);
+  watchdog.unref?.();
+
+  // Capture drives the real firing path, but an OS notification would sit there
+  // waiting for a human. Route delivery to VS Code for the duration so the
+  // widget bubble still appears without raising a system notification.
+  settings = { ...settings, deliveryOwner: "vscode" };
+
   const shot = async (name: string): Promise<void> => {
     const image = await w.webContents.capturePage();
     writeFileSync(join(dir, name), image.toPNG());
@@ -132,10 +149,20 @@ async function runCapture(): Promise<void> {
   await wait(1000);
   await shot("04-onboarding.png");
 
+  // Walk every settings section so each one can be inspected.
   widget.setRoute("settings");
-  await wait(1000);
-  await shot("05-settings.png");
+  await wait(1200);
+  const sections = ["reminders", "pandy", "sounds", "focus", "notifications", "advanced"];
+  for (let i = 0; i < sections.length; i++) {
+    // Drive the sidebar the way a user would, by clicking it.
+    await w.webContents.executeJavaScript(
+      `(() => { const b = [...document.querySelectorAll('.nav button')][${i}]; if (b) b.click(); })()`,
+    );
+    await wait(700);
+    await shot(`0${5 + i}-settings-${sections[i]}.png`);
+  }
 
+  clearTimeout(watchdog);
   quitting = true;
   app.exit(0);
 }
@@ -248,6 +275,10 @@ function sendMascot(state: MascotState): void {
  * Whichever it was, the widget bubble has to come down — otherwise clicking
  * "Done" on a notification leaves a stale prompt floating on screen.
  */
+function sendSound(event: "reminder" | "completed" | "snoozed" | "focusStart" | "focusEnd"): void {
+  widget.window?.webContents.send(CHANNELS.onSound, event);
+}
+
 function clearReminder(): void {
   widget.setReminderMode(false);
   widget.window?.webContents.send(CHANNELS.onReminderCleared);
@@ -307,6 +338,14 @@ function registerIpc(): void {
 
   ipcMain.handle(CHANNELS.reminderDismissed, () => widget.setReminderMode(false));
 
+  ipcMain.handle(CHANNELS.restoreDefaults, async () => {
+    // Every setting back to how Pandy shipped, and the schedule started over.
+    // The confirmation lives in the renderer; by here the user has agreed.
+    await applySettings(parseSettings({}));
+    await engine.resetSchedule();
+    afterChange();
+  });
+
   ipcMain.handle(CHANNELS.setSettings, async (_e, raw: unknown) => {
     const patch = settingsPatchOf(raw);
     if (!patch) return;
@@ -324,11 +363,13 @@ function registerIpc(): void {
     const minutes = pauseMinutesOf(raw);
     if (minutes === null) return;
     await engine.pause(minutes * 60_000);
+    sendSound("focusStart");
     afterChange();
   });
 
   ipcMain.handle(CHANNELS.resume, async () => {
     await engine.resumeFromPause();
+    sendSound("focusEnd");
     afterChange();
   });
 
@@ -375,7 +416,14 @@ function registerIpc(): void {
     const host = widget.window;
     const menu = Menu.buildFromTemplate([
       { label: "Take a break now", click: () => void engine.triggerNow() },
-      { label: "Pause for 1 hour", click: () => void engine.pause(60 * 60_000).then(afterChange) },
+      {
+        label: "Pause for 1 hour",
+        click: () =>
+          void engine.pause(60 * 60_000).then(() => {
+            sendSound("focusStart");
+            afterChange();
+          }),
+      },
       { label: "Resume", enabled: engine.isPaused(), click: () => void engine.resumeFromPause().then(afterChange) },
       { type: "separator" },
       { label: "Settings…", click: () => widget.setRoute("settings") },

@@ -29,9 +29,14 @@ export interface QuietHours extends TimeWindow {
 
 export interface SoundSettings {
   readonly enabled: boolean;
-  /** 0..1 */
+  /** Master level, 0..1. Each cue has its own relative level on top of this. */
   readonly volume: number;
+  /** Focus-mode start/end cues. Opt-in even when sound is on. */
+  readonly focusCues: boolean;
 }
+
+/** The always-visible affordance beside Pandy that opens settings. */
+export type SettingsControl = "heart" | "dot" | "hidden";
 
 export interface AnimationSettings {
   readonly enabled: boolean;
@@ -43,11 +48,16 @@ export interface AnimationSettings {
 export interface WidgetSettings {
   readonly visible: boolean;
   readonly corner: Corner;
-  /** 0.2..1 */
+  /**
+   * 0.2..1. Applied in CSS to the mascot and controls, never via
+   * BrowserWindow.setOpacity — on macOS that pushes a transparent window onto
+   * an opaque compositing path and the clear area renders as a grey rectangle.
+   */
   readonly opacity: number;
   readonly alwaysOnTop: boolean;
   readonly visibleOnAllWorkspaces: boolean;
   readonly locked: boolean;
+  readonly settingsControl: SettingsControl;
 }
 
 export interface Settings {
@@ -107,15 +117,16 @@ export const DEFAULT_SETTINGS: Settings = {
   tone: "gen-z",
   customMessages: {},
 
-  sound: { enabled: false, volume: 0.5 },
+  sound: { enabled: false, volume: 0.6, focusCues: false },
   animation: { enabled: true, reducedMotion: false, mascotScale: 2 },
   widget: {
     visible: true,
     corner: "bottom-right",
-    opacity: 0.95,
+    opacity: 1,
     alwaysOnTop: true,
     visibleOnAllWorkspaces: false,
     locked: false,
+    settingsControl: "heart",
   },
 
   launchAtLogin: false,

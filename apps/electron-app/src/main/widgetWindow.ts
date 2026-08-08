@@ -6,14 +6,21 @@ import { CHANNELS } from "../shared/ipc.js";
 
 const WIDGET_BASE = 64;
 const MARGIN = 24;
+/** Narrow lane to the right of the mascot for the heart / dot control. */
+const CONTROL_LANE = 30;
 /** Settings and onboarding need room; the widget itself does not. */
-const PANEL_SIZE = { width: 760, height: 720 };
+const PANEL_SIZE = { width: 860, height: 760 };
 /**
  * Extra room for the message bubble above the mascot and the Done/Snooze/Pause
  * row below it. A frameless window clips anything outside its bounds, so
  * without this the buttons would be invisible and unclickable.
  */
-const REMINDER_PADDING = { width: 280, height: 150 };
+const REMINDER_PADDING = { width: 300, height: 150 };
+
+export interface Size {
+  readonly width: number;
+  readonly height: number;
+}
 
 /**
  * Exactly one BrowserWindow for the whole app.
@@ -44,15 +51,19 @@ export class WidgetWindow {
     const existing = this.window;
     if (existing) return existing;
 
-    const size = this.#widgetSize();
+    const size = this.idleSize();
     const at = this.#resolvePosition(position, size);
 
     this.#window = new BrowserWindow({
-      width: size,
-      height: size,
+      width: size.width,
+      height: size.height,
       x: at.x,
       y: at.y,
       transparent: true,
+      // Electron defaults backgroundColor to opaque white. `transparent: true`
+      // usually overrides it, but on macOS leaving it unset is a documented
+      // source of an opaque backing layer — so say it explicitly.
+      backgroundColor: "#00000000",
       frame: false,
       resizable: false,
       maximizable: false,
@@ -73,7 +84,16 @@ export class WidgetWindow {
       },
     });
 
-    this.#window.setOpacity(this.#settings.widget.opacity);
+    /*
+     * Deliberately no setOpacity anywhere in this file.
+     *
+     * On macOS, calling setOpacity on a transparent window moves it onto a
+     * non-transparent compositing path and the clear region renders as a solid
+     * grey rectangle. It happens after the page paints, which is why
+     * webContents.capturePage() showed perfect transparency while the screen
+     * did not. Widget opacity is applied in CSS to the mascot and controls
+     * instead, so the window itself stays completely clear.
+     */
     this.applyAlwaysOnTop(this.#settings.widget.alwaysOnTop);
     this.applyAllWorkspaces(this.#settings.widget.visibleOnAllWorkspaces);
     this.#window.setIgnoreMouseEvents(false);
@@ -90,6 +110,26 @@ export class WidgetWindow {
     return this.#window;
   }
 
+  /** Mascot square, in physical pixels. */
+  mascotPx(): number {
+    return WIDGET_BASE * this.#settings.animation.mascotScale;
+  }
+
+  /** Window size at rest: the mascot plus the control lane, when shown. */
+  idleSize(): Size {
+    const mascot = this.mascotPx();
+    const lane = this.#settings.widget.settingsControl === "hidden" ? 0 : CONTROL_LANE;
+    return { width: mascot + lane, height: mascot };
+  }
+
+  #reminderSize(): Size {
+    const mascot = this.mascotPx();
+    return {
+      width: Math.max(this.idleSize().width, REMINDER_PADDING.width),
+      height: mascot + REMINDER_PADDING.height,
+    };
+  }
+
   /**
    * Grow the window to fit the bubble and action buttons while a reminder is
    * showing, then shrink back. The mascot's own position on screen is kept
@@ -99,20 +139,21 @@ export class WidgetWindow {
     const w = this.window;
     if (!w || this.#route !== "widget" || this.#reminderMode === on) return;
     this.#reminderMode = on;
+    this.#resizeTo(on ? this.#reminderSize() : this.idleSize());
+  }
 
-    const mascot = this.#widgetSize();
-    const [oldW = mascot, oldH = mascot] = w.getSize();
+  get reminderMode(): boolean {
+    return this.#reminderMode;
+  }
+
+  /** Resize about the window's centre, so the mascot appears to stay put. */
+  #resizeTo(size: Size): void {
+    const w = this.window;
+    if (!w) return;
+    const [oldW = size.width, oldH = size.height] = w.getSize();
     const [x = 0, y = 0] = w.getPosition();
 
-    const size = on
-      ? {
-          width: Math.max(mascot, REMINDER_PADDING.width),
-          height: mascot + REMINDER_PADDING.height,
-        }
-      : { width: mascot, height: mascot };
-
-    // Keep the centre of the window fixed so the mascot stays put.
-    const next = clampToLargestDisplay(
+    const next = clampRectToDisplay(
       Math.round(x + (oldW - size.width) / 2),
       Math.round(y + (oldH - size.height) / 2),
       size.width,
@@ -121,10 +162,6 @@ export class WidgetWindow {
 
     w.setSize(size.width, size.height);
     w.setPosition(next.x, next.y);
-  }
-
-  get reminderMode(): boolean {
-    return this.#reminderMode;
   }
 
   /** Show without stealing focus from whatever the user is typing in. */
@@ -149,22 +186,31 @@ export class WidgetWindow {
   setRoute(route: Route): void {
     const w = this.window;
     if (!w) return;
+    const previous = this.#route;
     this.#route = route;
 
     if (route === "widget") {
-      const size = this.#widgetSize();
+      const size = this.#reminderMode ? this.#reminderSize() : this.idleSize();
       w.setFocusable(false);
       w.setAlwaysOnTop(this.#settings.widget.alwaysOnTop, "floating");
-      w.setOpacity(this.#settings.widget.opacity);
       w.setResizable(false);
-      w.setSize(size, size);
+      // The panel sets a minimum size; it persists, and would stop the widget
+      // ever shrinking back down once settings had been opened even once.
+      w.setMinimumSize(1, 1);
+      w.setSize(size.width, size.height);
       w.setSkipTaskbar(true);
+      // Coming back from the panel, re-seat it in its corner rather than
+      // leaving the widget stranded in the middle of the screen.
+      if (previous !== "widget") {
+        const at = cornerPosition(this.#settings, size);
+        w.setPosition(at.x, at.y);
+      }
     } else {
       // The panel needs the keyboard, so it must be focusable while open.
       w.setFocusable(true);
       w.setAlwaysOnTop(false);
-      w.setOpacity(1);
       w.setResizable(true);
+      w.setMinimumSize(520, 480);
       w.setSize(PANEL_SIZE.width, PANEL_SIZE.height);
       w.setSkipTaskbar(false);
       w.center();
@@ -175,17 +221,20 @@ export class WidgetWindow {
   }
 
   updateSettings(settings: Settings): void {
+    const previous = this.#settings;
     this.#settings = settings;
     const w = this.window;
     if (!w || this.#route !== "widget") return;
 
-    w.setOpacity(settings.widget.opacity);
     this.applyAlwaysOnTop(settings.widget.alwaysOnTop);
     this.applyAllWorkspaces(settings.widget.visibleOnAllWorkspaces);
 
-    const size = this.#widgetSize();
-    const [cw] = w.getSize();
-    if (cw !== size) w.setSize(size, size);
+    // Mascot size or the control lane changed — refit the window.
+    const sizeChanged =
+      previous.animation.mascotScale !== settings.animation.mascotScale ||
+      previous.widget.settingsControl !== settings.widget.settingsControl;
+
+    if (sizeChanged && !this.#reminderMode) this.#resizeTo(this.idleSize());
   }
 
   applyAlwaysOnTop(on: boolean): void {
@@ -201,9 +250,18 @@ export class WidgetWindow {
   moveTo(x: number, y: number): void {
     const w = this.window;
     if (!w || this.#settings.widget.locked) return;
-    const size = this.#widgetSize();
-    const clamped = clampToDisplay(x, y, size);
+    const [width = 0, height = 0] = w.getSize();
+    const clamped = clampRectToDisplay(x, y, width, height);
     w.setPosition(clamped.x, clamped.y);
+  }
+
+  /** Put the widget back in its configured corner. */
+  snapToCorner(): void {
+    const w = this.window;
+    if (!w || this.#route !== "widget") return;
+    const size = this.#reminderMode ? this.#reminderSize() : this.idleSize();
+    const at = cornerPosition(this.#settings, size);
+    w.setPosition(at.x, at.y);
   }
 
   destroy(): void {
@@ -211,35 +269,34 @@ export class WidgetWindow {
     this.#window = null;
   }
 
-  #widgetSize(): number {
-    return WIDGET_BASE * this.#settings.animation.mascotScale;
-  }
-
   /**
    * A saved position from a monitor that is no longer attached would put the
    * widget somewhere invisible, so it is validated against the current displays
    * and otherwise falls back to the configured corner.
    */
-  #resolvePosition(saved: WidgetPosition | null, size: number): { x: number; y: number } {
-    if (saved && isOnSomeDisplay(saved.x, saved.y, size)) return clampToDisplay(saved.x, saved.y, size);
+  #resolvePosition(saved: WidgetPosition | null, size: Size): { x: number; y: number } {
+    if (saved && isOnSomeDisplay(saved.x, saved.y, size)) {
+      return clampRectToDisplay(saved.x, saved.y, size.width, size.height);
+    }
     return cornerPosition(this.#settings, size);
   }
 }
 
-export function isOnSomeDisplay(x: number, y: number, size: number): boolean {
+export function isOnSomeDisplay(x: number, y: number, size: Size): boolean {
   return screen.getAllDisplays().some((d) => {
     const a = d.workArea;
     // Require most of the widget to be on-screen, not just one pixel of it.
-    return x + size > a.x + 8 && y + size > a.y + 8 && x < a.x + a.width - 8 && y < a.y + a.height - 8;
+    return (
+      x + size.width > a.x + 8 &&
+      y + size.height > a.y + 8 &&
+      x < a.x + a.width - 8 &&
+      y < a.y + a.height - 8
+    );
   });
 }
 
-export function clampToDisplay(x: number, y: number, size: number): { x: number; y: number } {
-  return clampToLargestDisplay(x, y, size, size);
-}
-
-/** Clamp a rectangle of any aspect into the nearest display's work area. */
-export function clampToLargestDisplay(
+/** Clamp a rectangle into the nearest display's work area. */
+export function clampRectToDisplay(
   x: number,
   y: number,
   width: number,
@@ -253,12 +310,12 @@ export function clampToLargestDisplay(
   };
 }
 
-export function cornerPosition(settings: Settings, size: number): { x: number; y: number } {
+export function cornerPosition(settings: Settings, size: Size): { x: number; y: number } {
   const a = screen.getPrimaryDisplay().workArea;
   const left = a.x + MARGIN;
-  const right = a.x + a.width - size - MARGIN;
+  const right = a.x + a.width - size.width - MARGIN;
   const top = a.y + MARGIN;
-  const bottom = a.y + a.height - size - MARGIN;
+  const bottom = a.y + a.height - size.height - MARGIN;
 
   switch (settings.widget.corner) {
     case "top-left":

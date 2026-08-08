@@ -65,6 +65,11 @@ async function copyStatic() {
   await rm(strips, { recursive: true, force: true });
   await cp(resolve(repoRoot, "assets/mascot/strips"), strips, { recursive: true });
 
+  // Sound cues, from the single source in assets/.
+  const sounds = resolve(rendererOut, "sounds");
+  await rm(sounds, { recursive: true, force: true });
+  await cp(resolve(repoRoot, "assets/sounds"), sounds, { recursive: true });
+
   // Tray and app icons.
   await cp(resolve(here, "build/tray.png"), resolve(rendererOut, "tray.png"));
 }

@@ -1,7 +1,8 @@
 import { MascotAnimator, loadSheets, prefersReducedMotion } from "@pandy/mascot";
 import type { MascotState, ReminderType, Settings } from "@pandy/shared-types";
 import type { AppState, PandyBridge, ReminderPayload, Route } from "../shared/ipc.js";
-import { renderPanel } from "./panel.js";
+import { destroyPanel, flashSaved, renderPanel } from "./panel.js";
+import { SoundPlayer, isSoundEvent, type SoundEvent } from "./sound.js";
 
 declare global {
   interface Window {
@@ -13,11 +14,13 @@ const api = window.pandy;
 const body = document.body;
 const widgetEl = document.getElementById("widget")!;
 const canvas = document.getElementById("mascot") as HTMLCanvasElement;
+const heart = document.getElementById("heart") as HTMLButtonElement;
 const bubble = document.getElementById("bubble")!;
 const actions = document.getElementById("actions")!;
 const panel = document.getElementById("panel")!;
 
 let animator: MascotAnimator | null = null;
+let sound: SoundPlayer | null = null;
 let state: AppState | null = null;
 let pending: ReminderType | null = null;
 let bubbleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -37,19 +40,42 @@ async function mountMascot(settings: Settings): Promise<void> {
   });
   animator.setState("idle");
 
-  // Nothing should animate while the window is hidden — that is the whole
-  // reason a widget parked in a corner costs nothing.
+  // Nothing animates while the window is hidden — that is why a widget parked
+  // in a corner costs nothing.
   document.addEventListener("visibilitychange", () => {
     animator?.setVisible(document.visibilityState === "visible");
   });
 }
 
-function applyAnimationSettings(settings: Settings): void {
-  // Explicit pixel size, never a percentage: the window grows when a reminder
-  // appears, and a percentage-sized canvas would stretch the sprite with it.
+function applyAppearance(settings: Settings): void {
+  // Explicit pixel size: the window grows for a reminder, and a percentage-
+  // sized canvas would stretch the sprite with it.
   const px = 64 * settings.animation.mascotScale;
   canvas.style.width = `${px}px`;
   canvas.style.height = `${px}px`;
+
+  /*
+   * Opacity is applied here rather than through BrowserWindow.setOpacity: on
+   * macOS that pushes a transparent window onto an opaque compositing path and
+   * the clear area renders as a grey rectangle. Fading the artwork keeps the
+   * window itself completely clear.
+   */
+  const o = String(settings.widget.opacity);
+  body.style.setProperty("--mascot-opacity", o);
+  // Bubble and buttons stay a little more solid than the panda, so a faded
+  // Pandy never makes its own reminder text hard to read.
+  body.style.setProperty("--chrome-opacity", String(Math.max(0.85, settings.widget.opacity)));
+
+  body.dataset["control"] = settings.widget.settingsControl;
+  heart.textContent = "";
+  const glyph = document.createElement("span");
+  glyph.className = "heart-glyph";
+  glyph.setAttribute("aria-hidden", "true");
+  glyph.textContent = settings.widget.settingsControl === "dot" ? "●" : "♥";
+  const sr = document.createElement("span");
+  sr.className = "sr-only";
+  sr.textContent = "Open Pandy settings";
+  heart.append(glyph, sr);
 
   if (!animator) return;
   const reduced = settings.animation.reducedMotion || prefersReducedMotion();
@@ -57,16 +83,18 @@ function applyAnimationSettings(settings: Settings): void {
   animator.setVisible(settings.animation.enabled && document.visibilityState === "visible");
 }
 
-// ── widget behaviour ───────────────────────────────────────────────────────
+// ── reminder bubble ────────────────────────────────────────────────────────
 
 function showReminder(reminder: ReminderPayload): void {
   pending = reminder.type;
   bubble.textContent = reminder.message;
   bubble.hidden = false;
   actions.hidden = false;
+  sound?.play("reminder");
+
   if (bubbleTimer) clearTimeout(bubbleTimer);
-  // Fade the prompt out on its own if it is ignored — the schedule has already
-  // advanced, so a stale bubble would just be clutter.
+  // Fade the prompt out on its own if ignored — the schedule has already moved
+  // on, so a stale bubble is just clutter.
   bubbleTimer = setTimeout(() => dismissBubble(), 90_000);
 }
 
@@ -79,7 +107,6 @@ function dismissBubble(notifyMain = true): void {
     clearTimeout(bubbleTimer);
     bubbleTimer = null;
   }
-  // Main grew the window to fit the bubble; tell it to shrink back.
   if (wasShowing && notifyMain) void api.reminderDismissed();
 }
 
@@ -87,12 +114,44 @@ actions.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const result = target.dataset["result"];
   if (!result || !pending) return;
-  // resolveReminder already shrinks the window in main, so don't ask twice.
+  if (result === "completed") sound?.play("completed");
+  if (result === "snoozed") sound?.play("snoozed");
+  // resolveReminder already shrinks the window in main; don't ask twice.
   void api.resolveReminder(pending, result as never);
   dismissBubble(false);
 });
 
-// Click the mascot for the compact menu, right-click for the full one.
+// ── heart: open settings without fighting the drag region ──────────────────
+
+/*
+ * The widget is one big drag region, so a click and the end of a drag look
+ * identical to the DOM. The heart only counts as a click if the pointer barely
+ * moved between press and release — dragging Pandy by the heart moves the
+ * widget and opens nothing.
+ */
+const CLICK_SLOP_PX = 4;
+let pressAt: { x: number; y: number } | null = null;
+
+heart.addEventListener("pointerdown", (e) => {
+  pressAt = { x: e.screenX, y: e.screenY };
+});
+
+heart.addEventListener("pointerup", (e) => {
+  if (!pressAt) return;
+  const moved = Math.hypot(e.screenX - pressAt.x, e.screenY - pressAt.y);
+  pressAt = null;
+  if (moved <= CLICK_SLOP_PX) void api.openSettings();
+});
+
+// Keyboard activation has no pointer to move, so it always opens.
+heart.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    void api.openSettings();
+  }
+});
+
+// Clicking Pandy itself still offers the compact menu; right-click always does.
 canvas.addEventListener("click", () => {
   if (pending) return;
   void api.contextMenu();
@@ -104,12 +163,12 @@ widgetEl.addEventListener("contextmenu", (event) => {
 });
 
 /*
- * Dragging is handled by -webkit-app-region on the widget, which the compositor
- * moves without a round trip. This listener only persists the final position,
- * and only when the widget is not locked.
+ * Dragging is handled by -webkit-app-region, which the compositor moves without
+ * a round trip. This only persists the final position.
  */
 window.addEventListener("mouseup", () => {
   if (!state || state.settings.widget.locked) return;
+  if (body.dataset["route"] !== "widget") return;
   void api.moveWidget(window.screenX, window.screenY);
 });
 
@@ -121,41 +180,67 @@ function setRoute(route: Route): void {
   panel.hidden = !isPanel;
   widgetEl.hidden = isPanel;
 
-  if (isPanel && state) {
-    renderPanel(panel, state, route, {
-      setSettings: (patch) => void api.setSettings(patch),
-      triggerNow: () => void api.triggerNow(),
-      pause: (minutes) => void api.pause(minutes),
-      resume: () => void api.resume(),
-      resetSchedule: () => void api.resetSchedule(),
-      completeOnboarding: () => void api.completeOnboarding(),
-      close: () => void api.closeSettings(),
-      quit: () => void api.quit(),
-    });
+  if (!isPanel) {
+    destroyPanel();
+    return;
   }
+  if (state) renderPanel(panel, state, route, panelActions);
 }
+
+const panelActions = {
+  patch: (p: Record<string, unknown>) => {
+    void api.setSettings(p);
+    flashSaved();
+  },
+  previewSound: (event: SoundEvent) => sound?.preview(event),
+  triggerNow: () => void api.triggerNow(),
+  pause: (minutes: number) => void api.pause(minutes),
+  resume: () => void api.resume(),
+  resetSchedule: () => void api.resetSchedule(),
+  restoreDefaults: () => void api.restoreDefaults(),
+  completeOnboarding: () => void api.completeOnboarding(),
+  close: () => void api.closeSettings(),
+  quit: () => void api.quit(),
+};
+
+// Escape closes settings, the way every other panel on the machine does.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (body.dataset["route"] !== "settings") return;
+  if (document.querySelector("dialog[open]")) return; // let the dialog take it
+  void api.closeSettings();
+});
 
 // ── wiring ─────────────────────────────────────────────────────────────────
 
 function applyState(next: AppState): void {
+  const first = state === null;
   state = next;
   body.dataset["theme"] = next.settings.theme;
   body.classList.toggle("locked", next.settings.widget.locked);
-  applyAnimationSettings(next.settings);
-  if (body.dataset["route"] !== "widget") setRoute(body.dataset["route"] as Route);
+  applyAppearance(next.settings);
+  sound?.setSettings(next.settings.sound);
+
+  // Re-render the open panel so values and their plain-language echoes stay
+  // truthful after a change made anywhere.
+  if (!first && body.dataset["route"] !== "widget") {
+    renderPanel(panel, next, body.dataset["route"] as Route, panelActions);
+  }
 }
 
 api.onState(applyState);
 api.onMascot((mascot: MascotState) => animator?.setState(mascot));
 api.onReminder(showReminder);
-// Answered from the tray or the OS notification — main already shrank the
-// window, so clear the bubble without asking it to shrink again.
 api.onReminderCleared(() => dismissBubble(false));
+api.onSound((event: string) => {
+  if (isSoundEvent(event)) sound?.play(event);
+});
 api.onRoute(setRoute);
 
 void (async () => {
   const initial = await api.getState();
+  sound = new SoundPlayer("sounds", initial.settings.sound);
   applyState(initial);
   await mountMascot(initial.settings);
-  applyAnimationSettings(initial.settings);
+  applyAppearance(initial.settings);
 })();

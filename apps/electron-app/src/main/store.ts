@@ -23,12 +23,42 @@ function statePath(): string {
   return join(dataDir(), "state.json");
 }
 
-/** Write to a temp file then rename, so a crash mid-write cannot truncate the real one. */
+let writeSeq = 0;
+/** One in-flight write per path, so concurrent saves queue instead of racing. */
+const writeQueues = new Map<string, Promise<void>>();
+
+/**
+ * Write to a temp file then rename, so a crash mid-write cannot truncate the
+ * real one.
+ *
+ * Two things here are load-bearing and were both learned the hard way:
+ *
+ *   The temp name includes a counter, not just the pid. The pid is identical
+ *   for every write in the process, so two overlapping writes previously used
+ *   the *same* temp path — the first rename moved it away and the second threw
+ *   ENOENT, losing that save.
+ *
+ *   Writes to the same path are serialised. The settings panel saves on every
+ *   keystroke-sized change, so overlapping writes are the normal case, not an
+ *   edge case, and interleaved read-modify-write would drop fields.
+ */
 async function writeAtomic(path: string, contents: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile(tmp, contents, "utf8");
-  await rename(tmp, path);
+  const previous = writeQueues.get(path) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(async () => {
+      await mkdir(dirname(path), { recursive: true });
+      const tmp = `${path}.${process.pid}.${++writeSeq}.tmp`;
+      await writeFile(tmp, contents, "utf8");
+      await rename(tmp, path);
+    });
+
+  writeQueues.set(path, next);
+  try {
+    await next;
+  } finally {
+    if (writeQueues.get(path) === next) writeQueues.delete(path);
+  }
 }
 
 export async function loadSettings(): Promise<Settings> {
