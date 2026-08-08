@@ -1,0 +1,265 @@
+{
+  "canvas": [
+    64,
+    64
+  ],
+  "source": "Gemini_Generated_Image_avp67savp67savp6.png",
+  "pixel_scale_from_source": 5.283,
+  "animations": {
+    "idle": {
+      "fps": 6,
+      "frame_ms": 167,
+      "gif_frame_ms": [
+        170,
+        160,
+        170,
+        170
+      ],
+      "frames": 4,
+      "loop": true,
+      "source_frames": [
+        "idle_f1",
+        "idle_f2",
+        "idle_f3",
+        "idle_f4"
+      ],
+      "notes": "gentle breathing + blink on frame 2 + sprout sway",
+      "strip": "strips/idle_strip.png",
+      "gif": "gif/idle.gif",
+      "apng": "apng/idle.png"
+    },
+    "wave": {
+      "fps": 8,
+      "frame_ms": 125,
+      "gif_frame_ms": [
+        120,
+        130,
+        130,
+        120,
+        120,
+        130
+      ],
+      "frames": 6,
+      "loop": true,
+      "source_frames": [
+        "waveA_f1",
+        "waveB_f1",
+        "wave_f2",
+        "wave_f3",
+        "wave_f5",
+        "wave_f6"
+      ],
+      "notes": "neutral -> paw crosses up -> paw up -> wave out -> wave back -> neutral",
+      "strip": "strips/wave_strip.png",
+      "gif": "gif/wave.gif",
+      "apng": "apng/wave.png"
+    },
+    "drink": {
+      "fps": 8,
+      "frame_ms": 125,
+      "gif_frame_ms": [
+        120,
+        130,
+        130,
+        120,
+        120,
+        130
+      ],
+      "frames": 6,
+      "loop": true,
+      "source_frames": [
+        "drink_f1",
+        "drink_f2",
+        "drink_f3",
+        "drink_f4",
+        "drink_f5",
+        "drink_f6"
+      ],
+      "notes": "bottle appears -> lift -> sip (happy blink) -> lower -> neutral",
+      "strip": "strips/drink_strip.png",
+      "gif": "gif/drink.gif",
+      "apng": "apng/drink.png"
+    },
+    "stretch": {
+      "fps": 8,
+      "frame_ms": 125,
+      "gif_frame_ms": [
+        120,
+        130,
+        130,
+        120
+      ],
+      "frames": 4,
+      "loop": true,
+      "source_frames": [
+        "stretch_f1",
+        "stretch_f3",
+        "stretch_f4",
+        "stretch_f2"
+      ],
+      "notes": "anticipate -> raise both paws -> full stretch -> relax",
+      "strip": "strips/stretch_strip.png",
+      "gif": "gif/stretch.gif",
+      "apng": "apng/stretch.png"
+    },
+    "look": {
+      "fps": 8,
+      "frame_ms": 125,
+      "gif_frame_ms": [
+        120,
+        130,
+        130,
+        120
+      ],
+      "frames": 4,
+      "loop": true,
+      "source_frames": [
+        "look_f4",
+        "look_f1",
+        "look_f1",
+        "look_f4"
+      ],
+      "notes": "neutral -> glance aside (held 2f) -> return; f4 held across the loop seam",
+      "strip": "strips/look_strip.png",
+      "gif": "gif/look.gif",
+      "apng": "apng/look.png"
+    },
+    "touch": {
+      "fps": 8,
+      "frame_ms": 125,
+      "gif_frame_ms": [
+        120,
+        130,
+        130,
+        120
+      ],
+      "frames": 4,
+      "loop": true,
+      "source_frames": [
+        "touch_f1",
+        "touch_f2",
+        "touch_f4",
+        "touch_f2"
+      ],
+      "notes": "stand -> lower paw to grass -> touch + smile -> lift back",
+      "strip": "strips/touch_strip.png",
+      "gif": "gif/touch.gif",
+      "apng": "apng/touch.png"
+    },
+    "sleep": {
+      "fps": 6,
+      "frame_ms": 167,
+      "gif_frame_ms": [
+        170,
+        160,
+        170,
+        170
+      ],
+      "frames": 4,
+      "loop": true,
+      "source_frames": [
+        "sleep_f2",
+        "sleep_f3",
+        "sleep_f3",
+        "sleep_f2"
+      ],
+      "notes": "curled slow breathing, drooping sprout, rising Z; sleep_f1 is the enter-sleep pose",
+      "strip": "strips/sleep_strip.png",
+      "gif": "gif/sleep.gif",
+      "apng": "apng/sleep.png"
+    },
+    "celebrate": {
+      "fps": 10,
+      "frame_ms": 100,
+      "gif_frame_ms": [
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100,
+        100
+      ],
+      "frames": 8,
+      "loop": true,
+      "source_frames": [
+        "celebrate_f1",
+        "celebrate_f2",
+        "celebrate_f3",
+        "celebrate_f4",
+        "celebrate_f5",
+        "celebrate_f6",
+        "celebrate_f7",
+        "celebrate_f8"
+      ],
+      "notes": "ready -> squash -> launch -> apex + sparkles -> land squash -> settle (happy blink) -> recover -> flourish",
+      "strip": "strips/celebrate_strip.png",
+      "gif": "gif/celebrate.gif",
+      "apng": "apng/celebrate.png"
+    }
+  },
+  "unused_or_alt_frames": {
+    "sleep_f1": "enter-sleep pose (standing, eyes closed) - use as a one-shot transition into sleep",
+    "wave_f4": "both-paws cheer with motion lines - unused alt, good for a \"yay\" pose",
+    "waveA_f2": "alternate paw-across-face frame",
+    "stretch_f2": "also used as the relax beat in stretch"
+  },
+  "palette": [
+    [
+      2,
+      3,
+      2
+    ],
+    [
+      45,
+      45,
+      44
+    ],
+    [
+      81,
+      94,
+      82
+    ],
+    [
+      120,
+      185,
+      113
+    ],
+    [
+      152,
+      151,
+      151
+    ],
+    [
+      167,
+      232,
+      159
+    ],
+    [
+      198,
+      198,
+      199
+    ],
+    [
+      203,
+      221,
+      236
+    ],
+    [
+      217,
+      128,
+      124
+    ],
+    [
+      246,
+      216,
+      190
+    ],
+    [
+      254,
+      254,
+      253
+    ]
+  ]
+}

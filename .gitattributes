@@ -1,0 +1,13 @@
+# Normalise line endings for text
+* text=auto eol=lf
+
+# Sprite art is binary — never diff, never munge
+*.png binary
+*.gif binary
+*.dmg binary
+*.AppImage binary
+*.vsix binary
+
+# Collapse generated/vendored paths in diffs and language stats
+design/** linguist-documentation
+pnpm-lock.yaml linguist-generated=true -diff

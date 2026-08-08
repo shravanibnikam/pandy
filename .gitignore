@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+out/
+build/
+*.tsbuildinfo
+
+# Packaged artifacts
+release/
+*.vsix
+*.dmg
+*.AppImage
+*.exe
+*.blockmap
+
+# Test output
+coverage/
+.vitest/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode-test/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local env
+.env
+.env.local
