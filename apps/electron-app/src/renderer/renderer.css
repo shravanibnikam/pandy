@@ -1,54 +1,82 @@
+/*
+ * Palette
+ *
+ * Surfaces are deliberately NEUTRAL grey, not green-tinted. Pandy's accent is
+ * green, and when the background was also green (#1e1f1c / #262823 — "mossy")
+ * everything blended: the selected nav item, the toggles and the panel all sat
+ * at the same visual weight. Neutral surfaces give the green somewhere to pop.
+ *
+ * Four surface levels build depth instead of one flat plane:
+ *   sunk   — sidebar, input wells (recedes)
+ *   bg     — the panel itself
+ *   card   — grouped settings (lifts off bg)
+ *   raised — controls and hovered rows (lifts off card)
+ */
 :root {
   --bg: #ffffff;
-  --bg-sunk: #f2f4f0;
-  --fg: #1c1d1a;
-  --muted: #5d6159;
-  --accent: #3f8f43;
+  --bg-sunk: #f1f3f6;
+  --card: #ffffff;
+  --raised: #f7f8fa;
+  --fg: #15171c;
+  --muted: #596072;
+  --border: #d9dde4;
+  --border-strong: #b4bac6;
+  --accent: #1f7a3a;
+  --accent-soft: #e6f4ea;
   --accent-fg: #ffffff;
-  --border: #d0d4cb;
-  --card: #f7f9f5;
-  --danger: #a3341f;
+  --danger: #a32a1c;
   --radius: 10px;
   --focus: #1f6feb;
+  --shadow-sm: 0 1px 2px rgba(16, 20, 28, 0.06), 0 1px 3px rgba(16, 20, 28, 0.08);
+  --shadow-md: 0 2px 6px rgba(16, 20, 28, 0.08), 0 6px 16px rgba(16, 20, 28, 0.08);
+  --shadow-lg: 0 12px 40px rgba(16, 20, 28, 0.22);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1e1f1c;
-    --bg-sunk: #171815;
-    --fg: #eef0ea;
-    --muted: #a8ada2;
-    --accent: #7fc47a;
-    --accent-fg: #0d1f0b;
-    --border: #3a3e35;
-    --card: #262823;
-    --danger: #f0866c;
-    --focus: #86b5ff;
+    --bg: #17181c;
+    --bg-sunk: #0f1013;
+    --card: #1e2025;
+    --raised: #272a31;
+    --fg: #eceef3;
+    --muted: #9ba2b0;
+    --border: #2f333c;
+    --border-strong: #454b57;
+    --accent: #7ede83;
+    --accent-soft: #1c2c20;
+    --accent-fg: #06220c;
+    --danger: #ff9b83;
+    --focus: #7fb2ff;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
   }
 }
 
-/* Explicit choice beats the OS preference. */
-body[data-theme="light"] { color-scheme: light; }
-body[data-theme="dark"]  { color-scheme: dark; }
-
 /*
- * High contrast: borrow the system colours rather than guessing at a palette.
+ * High contrast: borrow the system colours rather than guessing a palette.
  * These keywords resolve to whatever the user's contrast theme actually uses.
  */
 @media (prefers-contrast: more), (forced-colors: active) {
   :root {
     --bg: Canvas;
     --bg-sunk: Canvas;
+    --card: Canvas;
+    --raised: Canvas;
     --fg: CanvasText;
     --muted: CanvasText;
-    --accent: Highlight;
-    --accent-fg: HighlightText;
     --border: CanvasText;
-    --card: Canvas;
+    --border-strong: CanvasText;
+    --accent: Highlight;
+    --accent-soft: Canvas;
+    --accent-fg: HighlightText;
     --danger: LinkText;
     --focus: Highlight;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
   }
-  .chip.on, button.primary { forced-color-adjust: none; }
+  .chip.on, button.primary, .nav button[aria-current="true"] { forced-color-adjust: none; }
 }
 
 * { box-sizing: border-box; }
@@ -60,31 +88,29 @@ body[data-theme="dark"]  { color-scheme: dark; }
  */
 [hidden] { display: none !important; }
 
+/*
+ * html and body NEVER paint a background, on any route.
+ *
+ * The widget window is transparent, and previously the panel routes put their
+ * background on <body>. Any moment the route attribute was not exactly
+ * "widget" — a dropped IPC message, a reload, the instant before the first
+ * onRoute arrives — the whole window painted solid. Only the panel containers
+ * below paint, so the widget cannot show a background even if routing breaks.
+ *
+ * color-scheme is scoped to those containers for the same reason: declaring it
+ * on the root makes Chromium paint the canvas, defeating transparency.
+ */
 html, body {
   margin: 0;
   height: 100%;
+  background: transparent !important;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--fg);
 }
 
-/*
- * The widget route must be completely transparent, all the way down. html and
- * body both have to be clear or the window shows a rectangle regardless of what
- * BrowserWindow was told.
- */
-body[data-route="widget"],
-body[data-route="widget"] > * {
-  background: transparent;
-}
-html:has(body[data-route="widget"]) { background: transparent; }
-
 body[data-route="widget"] { overflow: hidden; }
-
 body[data-route="settings"],
-body[data-route="onboarding"] {
-  background: var(--bg);
-  overflow: auto;
-}
+body[data-route="onboarding"] { overflow: auto; }
 
 body[data-route="settings"] #widget,
 body[data-route="onboarding"] #widget { display: none; }
@@ -109,6 +135,7 @@ body[data-route="onboarding"] #widget { display: none; }
   gap: 6px;
   width: 100vw;
   height: 100vh;
+  background: transparent;
   /* The whole widget is the drag handle. The heart and buttons opt out. */
   -webkit-app-region: drag;
   -webkit-user-select: none;
@@ -121,18 +148,36 @@ body.locked .widget { -webkit-app-region: no-drag; }
   display: flex;
   align-items: center;
   gap: 2px;
+  background: transparent;
 }
 
 #mascot {
   image-rendering: pixelated;
   display: block;
   flex: none;
+  background: transparent;
   /* Opacity lives here, not on the window: setOpacity on a transparent
      BrowserWindow makes macOS composite it as an opaque rectangle. */
   opacity: var(--mascot-opacity, 1);
 }
 
-/* The heart / dot control beside Pandy. */
+/*
+ * The heart / dot control beside Pandy.
+ *
+ * Full reset off the base button style — background, border AND box-shadow.
+ * It floats directly over the desktop, so any surface at all reads as a stray
+ * plate hanging next to the panda.
+ */
+.heart,
+.heart:hover,
+.heart:active,
+.heart:focus-visible {
+  background: none;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+
 .heart {
   -webkit-app-region: no-drag;
   flex: none;
@@ -141,9 +186,7 @@ body.locked .widget { -webkit-app-region: no-drag; }
   display: grid;
   place-items: center;
   padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--accent);
+  color: #7ede83;
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -151,49 +194,52 @@ body.locked .widget { -webkit-app-region: no-drag; }
      user notices it without hovering. */
   opacity: 0.72;
   transition: opacity 120ms ease, transform 120ms ease;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  /* Readable on a light or a dark wallpaper, since it floats over anything. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 
-.heart:hover { opacity: 1; transform: scale(1.15); }
+.heart:hover { opacity: 1; scale: 1.18; }
 /* Keyboard focus must never be the quiet state. */
-.heart:focus-visible { opacity: 1; transform: scale(1.15); }
+.heart:focus-visible { opacity: 1; scale: 1.18; }
 
 body[data-control="dot"] .heart-glyph { font-size: 20px; }
 body[data-control="hidden"] .heart { display: none; }
 
+/* Bubble and buttons float over the desktop, so they carry their own surface. */
 .bubble {
   flex: none;
   max-width: 260px;
   padding: 7px 11px;
   background: var(--card);
   color: var(--fg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   font-size: 12px;
   line-height: 1.35;
   text-align: center;
   -webkit-app-region: no-drag;
   opacity: var(--chrome-opacity, 1);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-md);
 }
 
 .actions {
   flex: none;
   display: flex;
-  gap: 4px;
+  gap: 5px;
   -webkit-app-region: no-drag;
   opacity: var(--chrome-opacity, 1);
 }
 
 .actions button {
-  padding: 4px 9px;
+  padding: 5px 10px;
   font-size: 11px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
+  font-weight: 500;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
   background: var(--card);
   color: var(--fg);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--shadow-md);
 }
 
 .actions button:first-child {
@@ -207,12 +253,19 @@ body[data-control="hidden"] .heart { display: none; }
 
 .panel { height: 100%; }
 
+/* The panel paints the background, not body — see the note on html above. */
 .shell {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 200px 1fr;
   grid-template-rows: auto 1fr;
   height: 100vh;
+  background: var(--bg);
+  color-scheme: light dark;
 }
+body[data-theme="light"] .shell,
+body[data-theme="light"] .onboarding-wrap { color-scheme: light; }
+body[data-theme="dark"] .shell,
+body[data-theme="dark"] .onboarding-wrap { color-scheme: dark; }
 
 .topbar {
   grid-column: 1 / -1;
@@ -220,27 +273,34 @@ body[data-control="hidden"] .heart { display: none; }
   align-items: center;
   gap: 14px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
   background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  /* Lifts the header above the scrolling content. */
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 2;
 }
 
-.topbar h1 { font-size: 18px; margin: 0; }
-.topbar .status { font-size: 12.5px; color: var(--muted); margin: 2px 0 0; }
+.topbar h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+.topbar .status { font-size: 12.5px; color: var(--muted); margin: 3px 0 0; }
 .topbar .spacer { flex: 1; }
 
 .preview-box {
   display: grid;
   place-items: center;
-  width: 76px; height: 76px;
+  width: 78px; height: 78px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  /* Inset well, so the live Pandy reads as sitting in something. */
   background: var(--bg-sunk);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
   flex: none;
 }
 #preview { image-rendering: pixelated; display: block; }
 
 .saved {
   font-size: 12px;
+  font-weight: 600;
   color: var(--accent);
   opacity: 0;
   transition: opacity 140ms ease;
@@ -248,10 +308,10 @@ body[data-control="hidden"] .heart { display: none; }
 }
 .saved.show { opacity: 1; }
 
-/* Sidebar navigation. */
+/* Sidebar sits below the content plane, so the hierarchy is obvious. */
 .nav {
   border-right: 1px solid var(--border);
-  padding: 12px 8px;
+  padding: 14px 10px;
   overflow-y: auto;
   background: var(--bg-sunk);
 }
@@ -259,28 +319,40 @@ body[data-control="hidden"] .heart { display: none; }
 .nav button {
   width: 100%;
   text-align: left;
-  padding: 8px 11px;
-  margin-bottom: 2px;
+  padding: 9px 12px;
+  margin-bottom: 3px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
   color: var(--fg);
   font: inherit;
   font-size: 13.5px;
   cursor: pointer;
+  box-shadow: none;
 }
-.nav button:hover { background: var(--card); }
+.nav button:hover {
+  background: var(--raised);
+  border-color: var(--border);
+}
 .nav button[aria-current="true"] {
   background: var(--accent);
   color: var(--accent-fg);
+  border-color: var(--accent);
   font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
 
-.nav .nav-foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.nav .nav-foot { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.nav .nav-foot .note { margin: 0; }
 
-.content { padding: 20px 24px 60px; overflow-y: auto; }
-.content h2 { font-size: 16px; margin: 0 0 4px; }
-.content > .lede { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+.content {
+  padding: 22px 26px 64px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.content h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.content > .lede { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+.content:focus, .content:focus-visible { outline: none; }
 
 /* Narrow window: nav becomes a scrolling tab strip above the content. */
 @media (max-width: 640px) {
@@ -295,31 +367,41 @@ body[data-control="hidden"] .heart { display: none; }
   }
   .nav ul { display: flex; gap: 6px; }
   .nav button { white-space: nowrap; width: auto; margin: 0; }
-  .nav .nav-foot { margin: 0; padding: 0; border: none; }
+  .nav .nav-foot { margin: 0; padding: 0; border: none; display: none; }
   .preview-box { width: 58px; height: 58px; }
+  .topbar { flex-wrap: wrap; }
 }
 
-/* ── controls ───────────────────────────────────────────────────────────── */
+/* ── grouped settings ───────────────────────────────────────────────────── */
 
 .group {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 4px 16px 12px;
-  margin: 0 0 16px;
+  padding: 6px 18px 14px;
+  margin: 0 0 18px;
+  /* Cards lift off the panel: own surface, own border, own shadow. */
   background: var(--card);
+  box-shadow: var(--shadow-sm);
 }
 .group > legend {
-  padding: 0 7px;
+  padding: 2px 9px;
+  margin-left: -4px;
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
 }
 
 .field {
   display: grid;
-  grid-template-columns: 1fr minmax(140px, 210px);
-  gap: 4px 16px;
+  grid-template-columns: 1fr minmax(150px, 220px);
+  gap: 4px 18px;
   align-items: center;
-  padding: 9px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
 }
 .field:last-child { border-bottom: none; }
@@ -328,46 +410,45 @@ body[data-control="hidden"] .heart { display: none; }
   grid-column: 1 / -1;
   color: var(--muted);
   font-size: 12px;
-  margin: -2px 0 0;
-  max-width: 62ch;
+  margin: 2px 0 0;
+  max-width: 64ch;
+  line-height: 1.45;
 }
 
-.field-label { font-size: 13.5px; }
+.field-label { font-size: 13.5px; font-weight: 500; }
 /* The plain-language echo of the current value: "Every 90 minutes". */
 .field-value {
   display: block;
   color: var(--muted);
   font-size: 12px;
-  margin-top: 1px;
+  font-weight: 400;
+  margin-top: 2px;
 }
 
 label { cursor: pointer; }
 
-input[type="number"], input[type="time"], input[type="text"], select {
+/* Inputs are inset wells — recessed against the card they sit on. */
+input[type="number"], input[type="time"], input[type="text"], select, textarea {
   width: 100%;
-  padding: 6px 8px;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font: inherit;
-  font-size: 13px;
-}
-
-textarea {
-  width: 100%;
-  min-height: 76px;
   padding: 7px 9px;
   color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  background: var(--bg-sunk);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
   font: inherit;
   font-size: 13px;
-  resize: vertical;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10);
 }
+input[type="number"]:hover, input[type="time"]:hover, select:hover, textarea:hover {
+  border-color: var(--accent);
+}
+textarea { min-height: 78px; resize: vertical; line-height: 1.5; }
 
-input[type="range"] { width: 100%; accent-color: var(--accent); }
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  background: transparent;
+}
 
 /* A real switch, not a bare checkbox. */
 .switch { position: relative; display: inline-flex; align-items: center; justify-self: end; }
@@ -377,42 +458,47 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   margin: 0; opacity: 0; cursor: pointer;
 }
 .switch .track {
-  width: 42px; height: 24px;
+  width: 44px; height: 25px;
   border-radius: 999px;
   background: var(--bg-sunk);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.18);
   transition: background 130ms ease, border-color 130ms ease;
   display: block;
 }
 .switch .thumb {
   position: absolute;
   top: 4px; left: 4px;
-  width: 16px; height: 16px;
+  width: 17px; height: 17px;
   border-radius: 50%;
   background: var(--muted);
+  box-shadow: var(--shadow-sm);
   transition: transform 130ms ease, background 130ms ease;
   pointer-events: none;
 }
 .switch input:checked ~ .track { background: var(--accent); border-color: var(--accent); }
-.switch input:checked ~ .thumb { transform: translateX(18px); background: var(--accent-fg); }
+.switch input:checked ~ .thumb { transform: translateX(19px); background: var(--accent-fg); }
 .switch input:focus-visible ~ .track { outline: 2px solid var(--focus); outline-offset: 2px; }
-/* On/off must not be conveyed by colour alone. */
-.switch input:checked ~ .track::after { content: ""; }
-.switch-state { font-size: 12px; color: var(--muted); margin-right: 8px; }
+/* The word beside it carries the state too, so it is never colour-only. */
+.switch-state { font-size: 12px; font-weight: 500; color: var(--muted); margin-right: 9px; }
 
 button {
-  padding: 7px 13px;
+  padding: 7px 14px;
   font: inherit;
   font-size: 13px;
+  font-weight: 500;
   color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
+  background: var(--raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 120ms ease, background 120ms ease;
 }
-button:hover { border-color: var(--accent); }
-button:disabled { opacity: 0.5; cursor: default; }
-button:disabled:hover { border-color: var(--border); }
+button:hover { border-color: var(--accent); background: var(--card); }
+button:active { box-shadow: none; transform: translateY(1px); }
+button:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+button:disabled:hover { border-color: var(--border); background: var(--raised); }
 
 button.primary {
   background: var(--accent);
@@ -420,19 +506,19 @@ button.primary {
   border-color: var(--accent);
   font-weight: 600;
 }
-button.danger { color: var(--danger); border-color: var(--danger); }
+button.primary:hover { background: var(--accent); filter: brightness(1.08); }
+
+button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--card);
+}
+button.danger:hover { border-color: var(--danger); filter: brightness(1.06); }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-/*
- * The content pane is focused programmatically when you switch section, so the
- * keyboard and a screen reader land where the eye does. It is a scroll
- * container rather than a control, so it should not draw a focus ring.
- */
-.content:focus, .content:focus-visible { outline: none; }
-
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { padding: 5px 10px; font-size: 12.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip { padding: 6px 11px; font-size: 12.5px; }
 /* Selected days carry a check mark as well as the fill. */
 .chip.on {
   background: var(--accent);
@@ -441,55 +527,67 @@ button.danger { color: var(--danger); border-color: var(--danger); }
   font-weight: 600;
 }
 
-.inline { display: flex; align-items: center; gap: 8px; }
+.inline { display: flex; align-items: center; gap: 9px; }
 .inline > input[type="time"] { width: auto; }
 
 /* Collapsible custom-message editor. */
-details.messages { margin-top: 8px; }
+details.messages { margin: 4px 0 6px; }
 details.messages > summary {
   cursor: pointer;
   font-size: 12.5px;
   color: var(--muted);
-  padding: 4px 0;
+  padding: 6px 0;
+  border-radius: 6px;
 }
+details.messages > summary:hover { color: var(--fg); }
 details.messages > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 details.messages .body { padding: 8px 0 4px; }
 
 .sound-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 4px 12px;
+  gap: 4px 14px;
   align-items: center;
-  padding: 9px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
 }
 .sound-row:last-child { border-bottom: none; }
-.sound-row .note { grid-column: 1 / -1; margin: -2px 0 0; color: var(--muted); font-size: 12px; }
+.sound-row .note { grid-column: 1 / -1; margin: 2px 0 0; color: var(--muted); font-size: 12px; }
 
 /* Confirmation dialog for destructive actions. */
 dialog {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  background: var(--card);
   color: var(--fg);
-  padding: 20px 22px;
-  max-width: 400px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  padding: 22px 24px;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
 }
-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
-dialog h3 { margin: 0 0 8px; font-size: 15px; }
-dialog p { margin: 0 0 16px; font-size: 13px; color: var(--muted); line-height: 1.5; }
-dialog .row { display: flex; justify-content: flex-end; gap: 8px; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+dialog h3 { margin: 0 0 8px; font-size: 15.5px; }
+dialog p { margin: 0 0 18px; font-size: 13px; color: var(--muted); line-height: 1.55; }
+dialog .row { display: flex; justify-content: flex-end; gap: 9px; }
 
-.onboarding-wrap { max-width: 560px; margin: 0 auto; padding: 32px 24px 48px; }
-.onboarding-wrap h1 { font-size: 22px; margin: 0 0 6px; }
-.onboarding-wrap p { line-height: 1.55; margin: 0 0 12px; }
-.radio-row { display: grid; grid-template-columns: auto 1fr; gap: 3px 9px; padding: 6px 0; }
+/* ── onboarding ─────────────────────────────────────────────────────────── */
+
+.onboarding-wrap {
+  min-height: 100vh;
+  padding: 36px 28px 52px;
+  background: var(--bg);
+}
+.onboarding-wrap > * { max-width: 580px; margin-left: auto; margin-right: auto; }
+.onboarding-wrap h1 { font-size: 23px; margin: 0 0 8px; letter-spacing: -0.02em; }
+.onboarding-wrap p { line-height: 1.6; margin: 0 0 14px; }
+.radio-row { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; padding: 7px 0; }
 .radio-row .note { grid-column: 2; color: var(--muted); font-size: 12px; margin: 0; }
 
+.note { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
 @media (prefers-reduced-motion: reduce) {
-  *, .heart, .switch .track, .switch .thumb, .saved {
+  *, .heart, .switch .track, .switch .thumb, .saved, button {
     animation: none !important;
     transition: none !important;
   }
+  button:active { transform: none; }
 }

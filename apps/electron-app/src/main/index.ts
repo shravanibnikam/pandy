@@ -178,7 +178,23 @@ async function runCapture(): Promise<void> {
 function runSelfTest(): void {
   const w = widget.window;
   setTimeout(() => {
+    void (async () => {
+    // Prove the page itself paints nothing on the widget route. If these are
+    // not rgba(0,0,0,0), the CSS is at fault; if they are, any remaining
+    // opacity is native compositing and no page change can fix it.
+    const paint = w
+      ? await w.webContents.executeJavaScript(
+          `({
+             route: document.body.dataset.route,
+             html: getComputedStyle(document.documentElement).backgroundColor,
+             body: getComputedStyle(document.body).backgroundColor,
+             widget: getComputedStyle(document.getElementById('widget')).backgroundColor,
+             heartVisible: !!document.getElementById('heart')?.offsetParent,
+           })`,
+        )
+      : null;
     const report = {
+      paint,
       windowCount: BrowserWindow.getAllWindows().length,
       exists: Boolean(w),
       visible: w?.isVisible() ?? false,
@@ -200,6 +216,7 @@ function runSelfTest(): void {
     writeFileSync(out, JSON.stringify(report, null, 2), "utf8");
     quitting = true;
     app.exit(0);
+    })();
   }, 1500);
 }
 
