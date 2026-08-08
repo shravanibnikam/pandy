@@ -267,8 +267,14 @@ type ReminderResult = "completed" | "snoozed" | "dismissed" | "paused";
 
 `updateSettings()` diffs the incoming settings, recomputes affected
 `nextDueAt` values immediately, and re-arms — no waiting for the current timer
-to expire. Interval changes rescale the remaining time proportionally rather
-than restarting the clock, so nudging an interval does not reset progress.
+to expire.
+
+Interval changes **clamp** the remaining time to the new interval rather than
+restarting the clock or rescaling proportionally. Shortening an interval takes
+effect straight away; lengthening one leaves a countdown already under way
+alone. Proportional rescaling was the original plan but behaves surprisingly —
+changing 30 min to 60 min with 10 minutes left would *double* the wait to 20
+minutes, which is not what "make reminders less frequent" implies to anyone.
 
 ### Randomization
 
