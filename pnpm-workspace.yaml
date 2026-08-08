@@ -2,7 +2,7 @@ packages:
   - "packages/*"
   - "apps/*"
 
-# Electron needs its postinstall to fetch the platform binary.
-onlyBuiltDependencies:
-  - electron
-  - esbuild
+# Both need their postinstall to fetch a platform-specific binary.
+allowBuilds:
+  esbuild: true
+  electron: true
