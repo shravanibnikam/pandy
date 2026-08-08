@@ -28,6 +28,21 @@ randomised by ±5 minutes so it never feels mechanical.
 **Pandy never guilts you.** No shame, no streak threats, no medical claims —
 just a panda who thinks you should drink some water.
 
+## What it looks like
+
+<table>
+<tr>
+<td align="center"><img src="docs/screenshots/01-widget-idle.png" width="96"><br><sub>Idle widget</sub></td>
+<td align="center"><img src="docs/screenshots/02-widget-reminder.png" width="240"><br><sub>A reminder</sub></td>
+</tr>
+</table>
+
+<img src="docs/screenshots/05-settings.png" width="640">
+
+These are captured by the app itself via `--pandy-capture`, which walks the real
+firing path and screenshots its own window — so they cannot drift from what
+Pandy actually renders.
+
 ## Principles
 
 - **Offline, always.** No accounts, no backend, no cloud sync, no AI APIs, no

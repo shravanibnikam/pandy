@@ -45,6 +45,12 @@ async function mountMascot(settings: Settings): Promise<void> {
 }
 
 function applyAnimationSettings(settings: Settings): void {
+  // Explicit pixel size, never a percentage: the window grows when a reminder
+  // appears, and a percentage-sized canvas would stretch the sprite with it.
+  const px = 64 * settings.animation.mascotScale;
+  canvas.style.width = `${px}px`;
+  canvas.style.height = `${px}px`;
+
   if (!animator) return;
   const reduced = settings.animation.reducedMotion || prefersReducedMotion();
   animator.setReducedMotion(reduced);
@@ -64,7 +70,8 @@ function showReminder(reminder: ReminderPayload): void {
   bubbleTimer = setTimeout(() => dismissBubble(), 90_000);
 }
 
-function dismissBubble(): void {
+function dismissBubble(notifyMain = true): void {
+  const wasShowing = !bubble.hidden;
   bubble.hidden = true;
   actions.hidden = true;
   pending = null;
@@ -72,14 +79,17 @@ function dismissBubble(): void {
     clearTimeout(bubbleTimer);
     bubbleTimer = null;
   }
+  // Main grew the window to fit the bubble; tell it to shrink back.
+  if (wasShowing && notifyMain) void api.reminderDismissed();
 }
 
 actions.addEventListener("click", (event) => {
   const target = event.target as HTMLElement;
   const result = target.dataset["result"];
   if (!result || !pending) return;
+  // resolveReminder already shrinks the window in main, so don't ask twice.
   void api.resolveReminder(pending, result as never);
-  dismissBubble();
+  dismissBubble(false);
 });
 
 // Click the mascot for the compact menu, right-click for the full one.
@@ -138,6 +148,9 @@ function applyState(next: AppState): void {
 api.onState(applyState);
 api.onMascot((mascot: MascotState) => animator?.setState(mascot));
 api.onReminder(showReminder);
+// Answered from the tray or the OS notification — main already shrank the
+// window, so clear the bubble without asking it to shrink again.
+api.onReminderCleared(() => dismissBubble(false));
 api.onRoute(setRoute);
 
 void (async () => {

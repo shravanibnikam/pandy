@@ -41,12 +41,14 @@ const bridge: PandyBridge = {
   openSettings: () => ipcRenderer.invoke(CHANNELS.openSettings) as Promise<void>,
   closeSettings: () => ipcRenderer.invoke(CHANNELS.closeSettings) as Promise<void>,
   contextMenu: () => ipcRenderer.invoke(CHANNELS.contextMenu) as Promise<void>,
+  reminderDismissed: () => ipcRenderer.invoke(CHANNELS.reminderDismissed) as Promise<void>,
   quit: () => ipcRenderer.invoke(CHANNELS.quit) as Promise<void>,
 
   onState: (handler: (state: AppState) => void) => subscribe(CHANNELS.onState, handler),
   onMascot: (handler: (state: MascotState) => void) => subscribe(CHANNELS.onMascot, handler),
   onReminder: (handler: (reminder: ReminderPayload) => void) =>
     subscribe(CHANNELS.onReminder, handler),
+  onReminderCleared: (handler: () => void) => subscribe(CHANNELS.onReminderCleared, handler),
   onRoute: (handler: (route: Route) => void) => subscribe(CHANNELS.onRoute, handler),
 };
 

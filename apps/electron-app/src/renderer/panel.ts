@@ -93,7 +93,10 @@ function settings(state: AppState, actions: PanelActions): DocumentFragment {
           : "No reminders are enabled.",
     ),
   );
-  info.append(p(`${state.daily.completed} of ${state.daily.total} taken today.`, "muted"));
+  // Just the count, never "N of M". A manual break increments completed without
+  // incrementing total, so the ratio can read "1 of 0" — and framing breaks as a
+  // quota you are behind on is exactly the guilt this project avoids.
+  info.append(p(breaksToday(state.daily.completed), "muted"));
   const closeBtn = button("Close");
   closeBtn.addEventListener("click", () => actions.close());
   head.append(info, closeBtn);
@@ -373,8 +376,13 @@ function rangeRow(
   return row;
 }
 
+export function breaksToday(completed: number): string {
+  if (completed === 0) return "No breaks taken yet today.";
+  return completed === 1 ? "1 break taken today." : `${completed} breaks taken today.`;
+}
+
 function daysRow(selected: readonly number[], onChange: (days: number[]) => void): HTMLElement {
-  const row = div("row");
+  const row = div("row row-wide");
   const group = div("chips");
   group.setAttribute("role", "group");
   group.setAttribute("aria-label", "Working days");

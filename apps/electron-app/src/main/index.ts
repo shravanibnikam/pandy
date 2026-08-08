@@ -83,6 +83,61 @@ async function main(): Promise<void> {
   if (!engine.getState().onboarded) widget.setRoute("onboarding");
 
   if (process.argv.includes("--pandy-selftest")) runSelfTest();
+  if (process.argv.includes("--pandy-capture")) void runCapture();
+}
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Walks the app through each state and captures its own window to PNG.
+ *
+ * Uses webContents.capturePage rather than a screen grab, so it needs no
+ * screen-recording permission and captures the window exactly, including the
+ * transparent background. This is also how the store screenshots are produced,
+ * which means they cannot drift from what the app actually renders.
+ */
+async function runCapture(): Promise<void> {
+  const dir = process.env["PANDY_CAPTURE_DIR"] ?? dataDir();
+  const w = widget.window;
+  if (!w) {
+    app.exit(1);
+    return;
+  }
+
+  const shot = async (name: string): Promise<void> => {
+    const image = await w.webContents.capturePage();
+    writeFileSync(join(dir, name), image.toPNG());
+  };
+
+  // Sprite strips are fetched and decoded on load; give them a beat.
+  await wait(1800);
+
+  widget.setRoute("widget");
+  widget.showInactive();
+  await wait(1200);
+  await shot("01-widget-idle.png");
+
+  // The real firing path, not a mock: this picks a message, persists, animates
+  // and grows the window exactly as a scheduled reminder would.
+  await engine.triggerNow("water");
+  await wait(1400);
+  await shot("02-widget-reminder.png");
+
+  clearReminder();
+  await engine.resolve("water", "completed");
+  await wait(500);
+  await shot("03-widget-celebrate.png");
+
+  widget.setRoute("onboarding");
+  await wait(1000);
+  await shot("04-onboarding.png");
+
+  widget.setRoute("settings");
+  await wait(1000);
+  await shot("05-settings.png");
+
+  quitting = true;
+  app.exit(0);
 }
 
 /**
@@ -124,6 +179,8 @@ function runSelfTest(): void {
 // ── notifications ──────────────────────────────────────────────────────────
 
 async function notify(reminder: DueReminder): Promise<void> {
+  // Grow the window first so the bubble and buttons have somewhere to render.
+  widget.setReminderMode(true);
   broadcastReminder(reminder);
 
   if (!desktopShouldNotify(settings.deliveryOwner)) {
@@ -144,9 +201,13 @@ async function notify(reminder: DueReminder): Promise<void> {
     closeButtonText: "Dismiss",
   });
 
-  notification.on("action", () => void engine.resolve(reminder.type, "completed").then(afterChange));
-  notification.on("click", () => void engine.resolve(reminder.type, "completed").then(afterChange));
-  notification.on("close", () => void engine.resolve(reminder.type, "dismissed").then(afterChange));
+  const answer = (result: "completed" | "dismissed") => {
+    clearReminder();
+    void engine.resolve(reminder.type, result).then(afterChange);
+  };
+  notification.on("action", () => answer("completed"));
+  notification.on("click", () => answer("completed"));
+  notification.on("close", () => answer("dismissed"));
 
   notification.show();
 }
@@ -180,6 +241,16 @@ function broadcastReminder(reminder: DueReminder): void {
 
 function sendMascot(state: MascotState): void {
   widget.window?.webContents.send(CHANNELS.onMascot, state);
+}
+
+/**
+ * A reminder can be answered from the widget, the tray, or the OS notification.
+ * Whichever it was, the widget bubble has to come down — otherwise clicking
+ * "Done" on a notification leaves a stale prompt floating on screen.
+ */
+function clearReminder(): void {
+  widget.setReminderMode(false);
+  widget.window?.webContents.send(CHANNELS.onReminderCleared);
 }
 
 function refreshTray(): void {
@@ -229,9 +300,12 @@ function registerIpc(): void {
   ipcMain.handle(CHANNELS.resolveReminder, async (_e, raw: unknown) => {
     const payload = resolvePayloadOf(raw);
     if (!payload) return;
+    clearReminder();
     await engine.resolve(payload.type, payload.result);
     afterChange();
   });
+
+  ipcMain.handle(CHANNELS.reminderDismissed, () => widget.setReminderMode(false));
 
   ipcMain.handle(CHANNELS.setSettings, async (_e, raw: unknown) => {
     const patch = settingsPatchOf(raw);

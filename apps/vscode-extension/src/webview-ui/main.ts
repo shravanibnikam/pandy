@@ -131,11 +131,17 @@ function header(state: StateMessage): HTMLElement {
     info.append(p("No reminders are enabled."));
   }
 
-  info.append(
-    p(`${state.daily.completed} of ${state.daily.total} taken today.`, "muted"),
-  );
+  // Just the count, never "N of M" — a manual break increments completed but
+  // not total, so the ratio can read "1 of 0", and a quota you are behind on is
+  // exactly the guilt framing this project avoids.
+  info.append(p(breaksToday(state.daily.completed), "muted"));
   wrap.append(info);
   return wrap;
+}
+
+export function breaksToday(completed: number): string {
+  if (completed === 0) return "No breaks taken yet today.";
+  return completed === 1 ? "1 break taken today." : `${completed} breaks taken today.`;
 }
 
 function canvasHost(): HTMLElement {
@@ -179,7 +185,7 @@ function settingsForm(settings: Settings): HTMLElement {
 }
 
 function fieldRow(field: Field, settings: Settings): HTMLElement {
-  const row = el("div", { class: "row" });
+  const row = el("div", { class: field.kind === "days" ? "row row-wide" : "row" });
   const id = `f-${field.key.replace(/\./g, "-")}`;
   const value = field.read(settings);
 

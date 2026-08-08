@@ -10,10 +10,15 @@
   <title>Pandy</title>
 </head>
 <body data-route="widget">
-  <!-- The widget: just the mascot, draggable, no chrome. -->
+  <!--
+    The widget stacks vertically: bubble, mascot, actions. Everything stays
+    inside the window bounds — a frameless window clips anything positioned
+    outside it, so the buttons must be laid out in flow, not absolutely.
+    Main grows the window when a reminder appears and shrinks it afterwards.
+  -->
   <div id="widget" class="widget">
-    <canvas id="mascot" width="64" height="64" role="img" aria-label="Pandy the panda"></canvas>
     <div id="bubble" class="bubble" role="status" aria-live="polite" hidden></div>
+    <canvas id="mascot" width="64" height="64" role="img" aria-label="Pandy the panda"></canvas>
     <div id="actions" class="actions" role="group" aria-label="Reminder actions" hidden>
       <button type="button" data-result="completed">Done</button>
       <button type="button" data-result="snoozed">Snooze</button>

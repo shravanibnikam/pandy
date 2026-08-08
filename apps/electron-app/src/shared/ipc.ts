@@ -22,10 +22,14 @@ export const CHANNELS = {
   closeSettings: "pandy:closeSettings",
   quit: "pandy:quit",
   contextMenu: "pandy:contextMenu",
+  /** The bubble went away without an answer (timed out). Shrinks the window. */
+  reminderDismissed: "pandy:reminderDismissed",
   // main → renderer, broadcast
   onState: "pandy:onState",
   onMascot: "pandy:onMascot",
   onReminder: "pandy:onReminder",
+  /** Answered somewhere else — the tray, or the OS notification. Clear the bubble. */
+  onReminderCleared: "pandy:onReminderCleared",
   onRoute: "pandy:onRoute",
 } as const;
 
@@ -61,9 +65,11 @@ export interface PandyBridge {
   openSettings(): Promise<void>;
   closeSettings(): Promise<void>;
   contextMenu(): Promise<void>;
+  reminderDismissed(): Promise<void>;
   quit(): Promise<void>;
   onState(handler: (state: AppState) => void): () => void;
   onMascot(handler: (state: MascotState) => void): () => void;
   onReminder(handler: (reminder: ReminderPayload) => void): () => void;
+  onReminderCleared(handler: () => void): () => void;
   onRoute(handler: (route: Route) => void): () => void;
 }

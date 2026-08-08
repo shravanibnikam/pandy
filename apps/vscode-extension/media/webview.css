@@ -53,6 +53,14 @@ legend { padding: 0 6px; font-weight: 600; }
 }
 
 .row .hint { grid-column: 1 / -1; margin-top: -2px; }
+
+/* Seven day chips do not fit the value column; let them use the full width. */
+.row-wide { grid-template-columns: 1fr; }
+.row-wide .chips { margin-top: 4px; }
+
+/* Author styles that set `display` beat the UA stylesheet's
+   `[hidden] { display: none }`. Keep hidden meaning hidden. */
+[hidden] { display: none !important; }
 .row-check { grid-template-columns: auto 1fr; }
 .row-check label { order: 2; }
 .row-check input { order: 1; justify-self: start; }

@@ -17,8 +17,17 @@
     --accent: #a7e89f;
     --accent-fg: #10240d;
     --border: #34372f;
-    --card: #26282300;
+    --card: #262823;
   }
+}
+
+/*
+ * The author styles below set `display`, which beats the UA stylesheet's
+ * `[hidden] { display: none }`. Without this the reminder buttons stay visible
+ * in the idle widget.
+ */
+[hidden] {
+  display: none !important;
 }
 
 /* Explicit overrides win over the OS preference when the user picks a theme. */
@@ -51,11 +60,18 @@ body[data-route="onboarding"] #widget { display: none; }
 
 /* ── widget ─────────────────────────────────────────────────────────────── */
 
+/*
+ * Column layout, not absolute positioning: a frameless window clips anything
+ * outside its bounds, so a bubble hung above the mascot with `bottom: 100%`
+ * would simply not exist. Main resizes the window to fit when a reminder
+ * appears, and this stack fills whatever it is given.
+ */
 .widget {
-  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   width: 100vw;
   height: 100vh;
   /* The whole widget is the drag handle. Buttons opt out below. */
@@ -66,21 +82,18 @@ body[data-route="onboarding"] #widget { display: none; }
 
 body.locked .widget { -webkit-app-region: no-drag; }
 
-canvas {
+#mascot {
   image-rendering: pixelated;
-  width: 100%;
-  height: 100%;
   display: block;
+  flex: none;
+  /* Explicit pixel size is set from mascotScale; never a percentage, which
+     would stretch the sprite when the window grows for a reminder. */
 }
 
 .bubble {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 6px;
+  flex: none;
+  max-width: 250px;
   padding: 6px 10px;
-  max-width: 260px;
   background: var(--card);
   color: var(--fg);
   border: 1px solid var(--border);
@@ -88,16 +101,11 @@ canvas {
   font-size: 12px;
   line-height: 1.35;
   text-align: center;
-  white-space: normal;
   -webkit-app-region: no-drag;
 }
 
 .actions {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 6px;
+  flex: none;
   display: flex;
   gap: 4px;
   -webkit-app-region: no-drag;
@@ -152,6 +160,10 @@ legend { padding: 0 6px; font-weight: 600; font-size: 14px; }
   padding: 6px 0;
 }
 .row .hint { grid-column: 1 / -1; margin-top: -4px; }
+
+/* Seven day chips do not fit a 180px column; let them use the full width. */
+.row-wide { grid-template-columns: 1fr; }
+.row-wide .chips { margin-top: 4px; }
 .row-check { grid-template-columns: auto 1fr; }
 .row-check label { order: 2; }
 .row-check input { order: 1; justify-self: start; }

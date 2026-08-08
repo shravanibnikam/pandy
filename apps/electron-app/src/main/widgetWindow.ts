@@ -8,6 +8,12 @@ const WIDGET_BASE = 64;
 const MARGIN = 24;
 /** Settings and onboarding need room; the widget itself does not. */
 const PANEL_SIZE = { width: 760, height: 720 };
+/**
+ * Extra room for the message bubble above the mascot and the Done/Snooze/Pause
+ * row below it. A frameless window clips anything outside its bounds, so
+ * without this the buttons would be invisible and unclickable.
+ */
+const REMINDER_PADDING = { width: 280, height: 150 };
 
 /**
  * Exactly one BrowserWindow for the whole app.
@@ -20,6 +26,7 @@ export class WidgetWindow {
   #window: BrowserWindow | null = null;
   #route: Route = "widget";
   #settings: Settings;
+  #reminderMode = false;
 
   constructor(settings: Settings) {
     this.#settings = settings;
@@ -81,6 +88,43 @@ export class WidgetWindow {
 
     void this.#window.loadFile(join(__dirname, "../renderer/index.html"));
     return this.#window;
+  }
+
+  /**
+   * Grow the window to fit the bubble and action buttons while a reminder is
+   * showing, then shrink back. The mascot's own position on screen is kept
+   * stable through the change, so the panda does not appear to jump.
+   */
+  setReminderMode(on: boolean): void {
+    const w = this.window;
+    if (!w || this.#route !== "widget" || this.#reminderMode === on) return;
+    this.#reminderMode = on;
+
+    const mascot = this.#widgetSize();
+    const [oldW = mascot, oldH = mascot] = w.getSize();
+    const [x = 0, y = 0] = w.getPosition();
+
+    const size = on
+      ? {
+          width: Math.max(mascot, REMINDER_PADDING.width),
+          height: mascot + REMINDER_PADDING.height,
+        }
+      : { width: mascot, height: mascot };
+
+    // Keep the centre of the window fixed so the mascot stays put.
+    const next = clampToLargestDisplay(
+      Math.round(x + (oldW - size.width) / 2),
+      Math.round(y + (oldH - size.height) / 2),
+      size.width,
+      size.height,
+    );
+
+    w.setSize(size.width, size.height);
+    w.setPosition(next.x, next.y);
+  }
+
+  get reminderMode(): boolean {
+    return this.#reminderMode;
   }
 
   /** Show without stealing focus from whatever the user is typing in. */
@@ -191,11 +235,21 @@ export function isOnSomeDisplay(x: number, y: number, size: number): boolean {
 }
 
 export function clampToDisplay(x: number, y: number, size: number): { x: number; y: number } {
+  return clampToLargestDisplay(x, y, size, size);
+}
+
+/** Clamp a rectangle of any aspect into the nearest display's work area. */
+export function clampToLargestDisplay(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): { x: number; y: number } {
   const display = screen.getDisplayNearestPoint({ x: Math.round(x), y: Math.round(y) });
   const a = display.workArea;
   return {
-    x: Math.round(Math.min(Math.max(x, a.x), a.x + a.width - size)),
-    y: Math.round(Math.min(Math.max(y, a.y), a.y + a.height - size)),
+    x: Math.round(Math.min(Math.max(x, a.x), a.x + a.width - width)),
+    y: Math.round(Math.min(Math.max(y, a.y), a.y + a.height - height)),
   };
 }
 
