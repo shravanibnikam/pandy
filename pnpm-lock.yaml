@@ -42,6 +42,12 @@ importers:
         specifier: workspace:*
         version: link:../shared-types
 
+  packages/mascot:
+    dependencies:
+      '@pandy/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+
   packages/messages:
     dependencies:
       '@pandy/shared-types':

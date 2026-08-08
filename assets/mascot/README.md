@@ -33,13 +33,34 @@ runtime animation config (FPS, loop behaviour, state→strip mapping) lives in
 - `celebrate` frames 3–4 deliberately leave the baseline (8 px and 7 px of air).
   That is intentional, not drift.
 
+## Art fixes applied
+
+**`wave_strip.png` and `drink_strip.png` are generated, not pristine.** The
+supplied art drew those two animations without the bamboo sprout every other
+animation wears, so `idle → wave` popped the sprout off the panda's head.
+`scripts/graft-sprout.py` lifts the sprout verbatim from idle frame 1 and
+translates it to follow each target frame's head.
+
+```bash
+python3 scripts/graft-sprout.py           # regenerate
+python3 scripts/graft-sprout.py --check   # verify, non-zero exit on drift
+```
+
+No pixels are invented and nothing already drawn is overwritten — a stamped
+pixel only lands where the target frame is transparent. The pristine originals
+are kept at `design/mascot/original-strips/`, which the script treats as its
+source of truth, so it is idempotent and safe to re-run.
+
+Anchoring uses the topmost **white** pixel rather than the topmost opaque one:
+black is used for both the ears and the raised paws, so an opaque-pixel anchor
+would jump whenever a paw goes up. The white head crown does not move.
+
 ## Known art caveats
 
 - `touch_strip.png` is **currently unreferenced.** Its frame 1 is the round blob
   panda; frames 2–4 are a different, taller character. `touchGrass` renders the
-  `stretch` strip instead until the art is reconciled. See `PLAN.md` §1.5.
-- `wave` and `drink` were drawn without the bamboo sprout that every other
-  animation wears. See `PLAN.md` §1.4.
+  `stretch` strip instead until the art is reconciled. The one place to change
+  is `ANIMATIONS.touchGrass.strip` in `packages/mascot`. See `PLAN.md` §1.5.
 
 Art source material — individual frames, GIFs, APNGs, `@4x` previews and the
 original authoring notes — lives in [`design/mascot/`](../../design/mascot/).
