@@ -12,6 +12,9 @@ files:
   - "dist/**/*"
   - "package.json"
   - "!**/*.map"
+  # tsc emits these alongside the esbuild output; neither is needed at runtime.
+  - "!dist/types/**"
+  - "!dist/*.tsbuildinfo"
 
 extraMetadata:
   main: dist/main/index.cjs

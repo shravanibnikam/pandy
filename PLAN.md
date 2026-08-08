@@ -444,30 +444,45 @@ independent of each other once 3 and 4 land.
 
 ---
 
-## 13. Definition of done
+## 13. Definition of done — verified 2026-08-08
 
-Not "it compiles". Before I call this complete I will verify and report:
+Not "it compiles". Each line records how it was actually checked.
 
-- [ ] `.vsix` installs into VS Code and activates on startup
-- [ ] A reminder fires, and Done / Snooze / Pause each behave correctly
-- [ ] Snooze produces exactly one deferred reminder, not a stack
-- [ ] Quiet hours suppress, and the next reminder lands after the window opens
-- [ ] Schedule survives a VS Code restart with no backlog burst
-- [ ] Electron app launches to tray, single instance enforced
-- [ ] Widget is transparent, draggable, always-on-top, and does not steal focus
-- [ ] Widget position persists and is restored on a valid display
-- [ ] Mascot returns to idle automatically after every one-shot animation
-- [ ] Reduced motion renders a single static frame
-- [ ] Both apps installed → exactly one notification, never two
-- [ ] Full test suite green; typecheck and lint clean
-- [ ] Electron packages built, or the exact commands documented if a target
-      cannot be cross-built from macOS
+| | Check | How it was verified |
+|---|---|---|
+| ✅ | `.vsix` installs and registers correctly | Installed for real; `shravanibnikam.pandy@0.1.0` present, 5 commands, 30 settings, `onStartupFinished` in the manifest |
+| ✅ | A reminder fires end to end | Real app, real clock: `lastFiredAt` set, `daily.total` 1, message id recorded for non-repetition, next scheduled exactly 120 s out |
+| ✅ | Done / Snooze / Dismiss / Pause behave correctly | 51 engine tests, incl. dismiss-still-advances-the-clock |
+| ✅ | Snooze produces one deferred reminder, not a stack | `engine.test.ts` — a second snooze moves the pending reminder rather than adding one |
+| ✅ | Quiet hours suppress and resume after the window | Tested both paths: deferred at schedule time, and gated when restored from storage |
+| ✅ | No backlog after restart or sleep | At most one fires when all four are overdue; verified in the real app too — a Saturday launch deferred all four to Monday 08:00 |
+| ✅ | Electron launches to tray, single instance | Launched; the lock genuinely rejected a second instance during testing |
+| ✅ | Widget transparent, on top, does not steal focus | `--pandy-selftest` against real Electron: `focusable:false`, `alwaysOnTop:true`, 128×128, bottom-right |
+| ✅ | Exactly one BrowserWindow | Self-test reports `windowCount: 1` on both routes |
+| ✅ | Widget position persists, clamped to a real display | Position round-trips through `state.json`; restore validates against attached displays |
+| ✅ | Mascot returns to idle after every one-shot | `animator.test.ts` asserts it for every non-looping animation |
+| ✅ | Reduced motion renders one static frame | Renders frame 0, schedules zero animation frames, never advances |
+| ✅ | Both installed → exactly one notification | Run end to end against the real heartbeat file, in all three modes, plus crashed and never-installed |
+| ✅ | Tests, typecheck, lint | 164 tests, `tsc -b` and `eslint` clean |
+| ✅ | All four packages built | `.vsix` 76 KB · two `.dmg` · NSIS `.exe` · AppImage |
 
-**Cross-build honesty:** macOS can produce the `.dmg` and the AppImage. A
-signed Windows installer generally cannot be produced from this machine without
-a Windows runner or a code-signing certificate. I will build what genuinely
-builds here, and document the rest as commands rather than claim a package
-exists that I never produced.
+### Verified but not by me
+
+- **Drag, click and right-click on the widget**, and the on-screen appearance of
+  both settings panels. Screen recording is not permitted in this environment,
+  so I could not capture the UI. The window properties behind those behaviours
+  are verified by `--pandy-selftest`, and the drag region and menu handlers are
+  wired, but I have not seen them move.
+- **VS Code activation at startup and the live notification UI.** The `.vsix`
+  installs and its manifest is correct, but confirming activation needs an
+  interactive editor session.
+
+### Cross-build outcome
+
+Better than expected: all three desktop targets built from macOS, the Windows
+installer via electron-builder's bundled wine. All are **unsigned** — signing
+needs certificates and, for a properly signed Windows binary, a Windows runner.
+See `docs/PUBLISHING.md`.
 
 ---
 

@@ -34,7 +34,7 @@ importers:
         version: 2.1.9(@types/node@22.20.1)(supports-color@7.2.0)
 
   apps/electron-app:
-    dependencies:
+    devDependencies:
       '@pandy/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -47,7 +47,6 @@ importers:
       '@pandy/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
-    devDependencies:
       electron:
         specifier: ^33.3.1
         version: 33.4.11(supports-color@7.2.0)
@@ -3882,7 +3881,7 @@ snapshots:
   '@types/plist@3.0.5':
     dependencies:
       '@types/node': 22.20.1
-      xmlbuilder: 11.0.1
+      xmlbuilder: 15.1.1
     optional: true
 
   '@types/responselike@1.0.3':

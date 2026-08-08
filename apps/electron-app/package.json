@@ -21,14 +21,13 @@
     "package:linux": "pnpm build && electron-builder --linux --publish never",
     "clean": "rm -rf dist ../../release/electron"
   },
-  "dependencies": {
+  "devDependencies": {
     "@pandy/core": "workspace:*",
     "@pandy/mascot": "workspace:*",
     "@pandy/messages": "workspace:*",
-    "@pandy/shared-types": "workspace:*"
-  },
-  "devDependencies": {
+    "@pandy/shared-types": "workspace:*",
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8"
-  }
+  },
+  "//deps": "The @pandy/* packages are devDependencies on purpose. esbuild inlines them into dist/, so nothing resolves them at runtime — and electron-builder copies production dependencies into the asar regardless of the `files` list, which would otherwise ship their sources, tests and tsbuildinfo for no reason."
 }

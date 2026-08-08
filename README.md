@@ -85,11 +85,31 @@ pnpm dev:electron        # run the tray app in development
 ### Packaging
 
 ```bash
-pnpm package:vscode      # → .vsix
-pnpm package:electron    # → .dmg / NSIS installer / AppImage
+pnpm package:vscode      # → release/pandy-vscode.vsix
+pnpm package:electron    # → release/electron/
 ```
 
-See [`docs/`](./docs) for full setup, publishing and privacy documentation.
+All three desktop targets cross-build from macOS:
+
+| Artifact | Size |
+|---|---|
+| `pandy-vscode.vsix` | 76 KB |
+| `Pandy-0.1.0-arm64.dmg` | 96 MB |
+| `Pandy-0.1.0.dmg` (x64) | 98 MB |
+| `Pandy Setup 0.1.0.exe` | 80 MB |
+| `Pandy-0.1.0.AppImage` | 119 MB |
+
+Builds are unsigned by default — see [PUBLISHING.md](./docs/PUBLISHING.md).
+
+## Documentation
+
+| | |
+|---|---|
+| [Setup](./docs/SETUP.md) | Install, develop, package, troubleshoot |
+| [Publishing](./docs/PUBLISHING.md) | Marketplace and installer releases, signing |
+| [Privacy](./docs/PRIVACY.md) | Exactly what is stored, and where |
+| [Accessibility](./docs/ACCESSIBILITY.md) | Motion, keyboard, screen readers, language |
+| [Plan](./PLAN.md) | Build plan, verified sprite facts, decisions taken |
 
 ## Privacy
 
@@ -100,8 +120,12 @@ telemetry — not disabled by default, **absent**.
 
 ## Status
 
-🚧 In active development. See [`PLAN.md`](./PLAN.md) for the build plan, the
-verified sprite-asset facts, and the decisions taken along the way.
+Both products build, package and run. 164 tests, clean typecheck and lint.
+
+The scheduling engine is covered by 67 tests against an injected fake clock —
+quiet hours crossing midnight, DST transitions, sleep and resume, restart with
+overdue reminders, snooze replacement, daily limits, cooldowns and the
+one-active-timer guarantee. Nothing in the suite waits in real time.
 
 ## License
 
