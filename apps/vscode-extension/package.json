@@ -3,16 +3,24 @@
   "displayName": "Pandy — Wellness Companion",
   "description": "A cute panda who reminds you to stand, hydrate, look away and touch grass. Fully offline, no accounts, no telemetry.",
   "version": "0.1.0",
+  "//module": "No \"type\": \"module\" here on purpose. esbuild bundles this extension to CommonJS (dist/extension.js), and declaring type:module makes Node treat that file as ESM — VS Code then never activates the extension at all, silently, with nothing in the extension host log.",
   "publisher": "shravanibnikam",
   "license": "MIT",
   "icon": "media/icon.png",
-  "private": true,
-  "type": "module",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other"],
-  "keywords": ["wellness", "health", "break", "reminder", "pomodoro", "ergonomics"],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "wellness",
+    "health",
+    "break",
+    "reminder",
+    "pomodoro",
+    "ergonomics"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/shravanibnikam/pandy.git",
@@ -27,7 +35,24 @@
     "theme": "dark"
   },
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "extensionKind": [
+    "ui"
+  ],
+  "//extensionKind": "Pandy is a UI extension: it owns a status bar item and local OS notifications, reads nothing from the workspace, and persists to globalState. vsce otherwise infers \"workspace\", which puts it in the remote extension host on an SSH/container session — wrong host for a desktop wellness reminder.",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Pandy only shows break reminders. It never reads your files, never runs workspace code, and stores its schedule outside the workspace."
+    },
+    "virtualWorkspaces": {
+      "supported": true,
+      "description": "Pandy needs no file system access, so it works the same in a virtual workspace."
+    }
+  },
+  "//capabilities": "Without untrustedWorkspaces, VS Code silently disables Pandy in any folder the user has not trusted — no error, nothing in the extension host log, the extension simply never activates. Pandy touches nothing in the workspace, so requiring trust bought no safety and cost every untrusted-folder user their reminders.",
   "contributes": {
     "commands": [
       {
@@ -35,10 +60,26 @@
         "title": "Take Break Now",
         "category": "Sprout Panda"
       },
-      { "command": "pandy.pause", "title": "Pause", "category": "Sprout Panda" },
-      { "command": "pandy.resume", "title": "Resume", "category": "Sprout Panda" },
-      { "command": "pandy.openSettings", "title": "Open Settings", "category": "Sprout Panda" },
-      { "command": "pandy.resetSchedule", "title": "Reset Schedule", "category": "Sprout Panda" }
+      {
+        "command": "pandy.pause",
+        "title": "Pause",
+        "category": "Sprout Panda"
+      },
+      {
+        "command": "pandy.resume",
+        "title": "Resume",
+        "category": "Sprout Panda"
+      },
+      {
+        "command": "pandy.openSettings",
+        "title": "Open Settings",
+        "category": "Sprout Panda"
+      },
+      {
+        "command": "pandy.resetSchedule",
+        "title": "Reset Schedule",
+        "category": "Sprout Panda"
+      }
     ],
     "configuration": {
       "title": "Pandy",
@@ -101,8 +142,18 @@
         },
         "pandy.workingDays": {
           "type": "array",
-          "items": { "type": "number", "minimum": 0, "maximum": 6 },
-          "default": [1, 2, 3, 4, 5],
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 6
+          },
+          "default": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
           "markdownDescription": "Days reminders are active. `0` is Sunday through `6` is Saturday.",
           "order": 10
         },
@@ -149,7 +200,10 @@
           "order": 20
         },
         "pandy.dailyLimit": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "default": null,
           "minimum": 1,
           "maximum": 200,
@@ -182,7 +236,11 @@
         },
         "pandy.tone": {
           "type": "string",
-          "enum": ["low-key", "gen-z", "chaotic"],
+          "enum": [
+            "low-key",
+            "gen-z",
+            "chaotic"
+          ],
           "enumDescriptions": [
             "Plain language. No slang, no emoji.",
             "Slang and emoji, warm rather than ironic.",
@@ -194,28 +252,36 @@
         },
         "pandy.customMessages.water": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Your own water reminders. Used in every tone.",
           "order": 31
         },
         "pandy.customMessages.stand": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Your own stand-and-stretch reminders.",
           "order": 32
         },
         "pandy.customMessages.lookAway": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Your own look-away reminders.",
           "order": 33
         },
         "pandy.customMessages.touchGrass": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "Your own outside-break reminders.",
           "order": 34
@@ -248,7 +314,11 @@
         },
         "pandy.deliveryOwner": {
           "type": "string",
-          "enum": ["vscode", "desktop", "both"],
+          "enum": [
+            "vscode",
+            "desktop",
+            "both"
+          ],
           "enumDescriptions": [
             "Only VS Code shows notifications.",
             "The desktop app shows notifications when it is running.",
@@ -260,7 +330,11 @@
         },
         "pandy.theme": {
           "type": "string",
-          "enum": ["light", "dark", "system"],
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ],
           "default": "system",
           "description": "Theme for the Pandy settings panel.",
           "order": 52
